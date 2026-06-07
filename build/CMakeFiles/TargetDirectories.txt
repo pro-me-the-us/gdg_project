@@ -1,0 +1,3 @@
+C:/CodeFiles/C++_Files/gdg_project-main/build/CMakeFiles/client.dir
+C:/CodeFiles/C++_Files/gdg_project-main/build/CMakeFiles/ALL_BUILD.dir
+C:/CodeFiles/C++_Files/gdg_project-main/build/CMakeFiles/ZERO_CHECK.dir

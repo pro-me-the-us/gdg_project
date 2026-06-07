@@ -1,0 +1,10 @@
+^C:\CODEFILES\C++_FILES\GDG_PROJECT-MAIN\BUILD\CMAKEFILES\73EB3BB00E9447144F2DCE078AFDCEDD\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/CodeFiles/C++_Files/gdg_project-main -BC:/CodeFiles/C++_Files/gdg_project-main/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/CodeFiles/C++_Files/gdg_project-main/build/ArenaShooter.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
