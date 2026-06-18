@@ -1,5 +1,5 @@
 #include<iostream>
-#include "PowerUp.h"
+#include "../Include/PowerUp.h"
 
 PowerUp::PowerUp(){
     attribx = 0;

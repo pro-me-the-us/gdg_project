@@ -12,32 +12,26 @@ find_package(OpenGL REQUIRED)
 add_executable(client
     client/client.cpp
     third_party/glad/src/glad.c
-    
+    Src/Entity.cpp
+    Src/Map.cpp
+    Src/PowerUp.cpp
+    Src/Power_Ups.cpp
+    Src/Tile.cpp
+    Src/Tiles.cpp
 )
 
-add_executable(server
-    server/server.cpp
-)
 
 target_include_directories(client PRIVATE
     third_party/glad/include
     third_party/enet/include
+    Include
 )
 
-target_include_directories(server PRIVATE
-    third_party/enet/include
-)
 
 target_link_libraries(client PRIVATE
     glfw
     glm::glm
     OpenGL::GL
-    enet
-    dl
-    pthread
-)
-
-target_link_libraries(server PRIVATE
     enet
     dl
     pthread
