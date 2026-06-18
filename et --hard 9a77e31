@@ -1,0 +1,104 @@
+[33mcommit 62553b323ec23c4df7cc1e5c1fa859afeddb571b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: AnimeshDS <animeshsingh519@gmail.com>
+Date:   Thu Jun 18 17:13:33 2026 +0000
+
+    Folder Name Corrected
+
+[33mcommit 78d7617cc8242c84ec5e09c9e0fc761229ae3592[m
+Author: AnimeshDS <animeshsingh519@gmail.com>
+Date:   Thu Jun 18 15:41:24 2026 +0000
+
+    All Work Done
+
+[33mcommit 9a77e31f91d514b66abd581d85aeebb800a70502[m
+Merge: 788037e 1720efb
+Author: AnimeshDS <animeshsingh519@gmail.com>
+Date:   Thu Jun 18 14:59:42 2026 +0000
+
+    Merge branch 'Animesh'
+
+[33mcommit 1720efb02f7936038cb1d30fbb810368e5296c2d[m
+Author: AnimeshDS <animeshsingh519@gmail.com>
+Date:   Thu Jun 18 14:53:55 2026 +0000
+
+    Files added
+
+[33mcommit db9b03568e831d3f5c974cb53fbce2ad7383f219[m
+Author: AnimeshDS <animeshsingh519@gmail.com>
+Date:   Thu Jun 18 14:27:51 2026 +0000
+
+    OpenGL header file connection work complete
+
+[33mcommit 70f9278d358645ff1d59892986360908f06b94bc[m
+Author: AnimeshDS <animeshsingh519@gmail.com>
+Date:   Thu Jun 18 12:50:48 2026 +0000
+
+    OpenGL Classes Added
+
+[33mcommit 152b40e0152b7eaf6d19307e6cd0de0f084e5d47[m
+Author: AnimeshDS <animeshsingh519@gmail.com>
+Date:   Thu Jun 18 08:29:40 2026 +0000
+
+    Header Files added to CMakeLists.txt
+
+[33mcommit 6928593ebbb1787802fb79b1507b12fbe8cdc3a6[m
+Author: AnimeshDS <animeshsingh519@gmail.com>
+Date:   Thu Jun 18 08:07:12 2026 +0000
+
+    Class Creation Done
+
+[33mcommit 788037eae725f1ad8e978d5e7e3895a9ac79819e[m
+Author: Harkirat Singh <harkiratsaluja1012@gmail.com>
+Date:   Tue Jun 16 08:11:39 2026 +0000
+
+    Added comment to main.cpp
+
+[33mcommit 8c7460f5d9a6ee506964b4a39fdad6b8b8366330[m
+Author: Aditya Mishra <adityamishra4345@gmail.com>
+Date:   Tue Jun 16 10:09:52 2026 +0530
+
+    Initialize README with project details and setup instructions
+    
+    Added detailed project overview, features, technical stack, architecture, controls, and development roadmap.
+
+[33mcommit cf0f85d5fd340ca6f2d83b8c9b077c9c16d7c6ae[m
+Author: AnimeshDS <animeshsingh519@gmail.com>
+Date:   Mon Jun 15 21:52:25 2026 +0000
+
+    Setup a basic Enet server-client
+
+[33mcommit 4bf69560fdad990bca33f099bd956ae00a298488[m
+Author: AnimeshDS <animeshsingh519@gmail.com>
+Date:   Mon Jun 15 18:24:00 2026 +0000
+
+    Random
+
+[33mcommit fcd4e72a0fc48b984e12d09d4016a29ee343cc4d[m
+Author: adityamishra4345 <adityamishra4345@gmail.com>
+Date:   Mon Jun 15 11:54:23 2026 +0530
+
+    Attempt to connect vs code to github
+
+[33mcommit 3ba7ef6e5914623d0f6eb865b80cd218113bb513[m
+Author: Charan25b <boggavarapu.charan25b@iiitg.ac.in>
+Date:   Sun Jun 14 17:39:02 2026 +0000
+
+    charan's commit
+
+[33mcommit b766cd3c398d6d8e264ad2b55a0f8407fbab2fb2[m
+Author: adityamishra4345 <adityamishra@gmail.com>
+Date:   Sun Jun 14 17:01:18 2026 +0000
+
+    few updates
+
+[33mcommit 46e7d6850a32b4bde56b2c8ebdc0dbc547499872[m
+Author: AnimeshDS <animeshsingh519@gmail.com>
+Date:   Sun Jun 14 16:34:21 2026 +0000
+
+    Code Running
+
+[33mcommit 83acb1246b541c4141c377590b01c6fffebcc3a2[m
+Author: pro_me_the_us <shubh005ashish@gmail.com>
+Date:   Sun Jun 14 08:23:32 2026 +0000
+
+    intial commit
