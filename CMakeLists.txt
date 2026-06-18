@@ -18,6 +18,10 @@ add_executable(client
     Src/Power_Ups.cpp
     Src/Tile.cpp
     Src/Tiles.cpp
+    Src/EBO.cpp
+    Src/VAO.cpp
+    Src/VBO.cpp
+    Src/ShaderClass.cpp
 )
 
 
