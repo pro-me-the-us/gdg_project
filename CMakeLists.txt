@@ -10,7 +10,7 @@ add_subdirectory(third_party/glm)
 find_package(OpenGL REQUIRED)
 
 add_executable(client
-    client/client.cpp
+    client/main.cpp
     third_party/glad/src/glad.c
     Src/Entity.cpp
     Src/Map.cpp
