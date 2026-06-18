@@ -8,13 +8,31 @@
 #include <cmath>
 #include <vector>
 
+/*
+    //Screen settings
+    int originalTileSize = 16; //16x16 tiles i.e size of player
+    int scale = 3;
+    int tileSize = originalTileSize*scale; //Actual tile size
+    int maxScreenCol= 16;
+    int maxScreenRow = 12;
+    int screenWidth = tileSize*maxScreenCol; //768 pixels
+    int screenHeight = tileSize*maxScreenRow; //576 pixels
+
+    //World Setting
+    int maxWorldCol = 65;
+    int maxWorldRow =65;
+    int worldWidth = tileSize*maxWorldCol;
+    int worldHeight = tileSize*maxWorldRow;
+
+*/
+
 int main() {
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	float WindowWidth = 1200.0f;
+	float WindowWidth = 800.0f;
 	float WindowHeight = 800.0f;
 	float AspectRatio = WindowWidth / WindowHeight;
 	//define the window with it's properties
@@ -24,30 +42,23 @@ int main() {
 		return -1;
 	}
 
+    float halfpxl = 8.0f/800.0f;
+
 	//vertices of the triangle
-	std::vector<GLfloat> vertices;
-	vertices.reserve(31 * 3);
+	std::vector<GLfloat> vertices = 
+    {
+        -halfpxl,   halfpxl,  0.0f,  // Top-Left
+        halfpxl,   halfpxl,  0.0f,  // Top-Right
+        halfpxl,  -halfpxl,  0.0f,  // Bottom-Right
+        -halfpxl,  -halfpxl,  0.0f   // Bottom-Left
+    };
 	
-	const float PI = 3.14159265359f;
-	GLfloat radius = 0.15f;
-	GLfloat xcenter = 0.0f;
-	GLfloat ycenter = 0.0f;
-
-	vertices.push_back(xcenter);
-	vertices.push_back(ycenter);
-	vertices.push_back(0.0f);
-
-	for (int i = 0;i <= 30;i++) {
-		float angledeg = i * 12.0f;
-		float anglerad = angledeg * (PI / 180.0f);
-
-		GLfloat xcurr = (xcenter + radius * (cosf(anglerad))) / AspectRatio;
-		GLfloat ycurr = ycenter + radius * (sinf(anglerad));
-		
-		vertices.push_back(xcurr);
-		vertices.push_back(ycurr);
-		vertices.push_back(0.0f);
-	}
+    std::vector<GLuint> indices = 
+    {
+        0,1,2,
+        2,3,0
+    };
+    
 
 	//make the window's context curretn
 	glfwMakeContextCurrent(window);
@@ -67,10 +78,13 @@ int main() {
 	VAO1.Bind();
 	
 	VBO VBO1(vertices, vertices.size()*sizeof(GLfloat));
-
+    EBO EBO1(indices,sizeof(indices)*sizeof(GLuint));
+    
 	VAO1.LinkVBO(VBO1, 0);
 	VAO1.Unbind();
 	VBO1.Unbind();
+    EBO1.Unbind();
+    
 
 	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "u_Pos");
 
@@ -117,7 +131,7 @@ int main() {
 		
 
 		VAO1.Bind();
-		glDrawArrays(GL_TRIANGLE_FAN,0,32);
+		glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
 		glfwSwapBuffers(window);
 		
 		//pol for and process event
