@@ -1,5 +1,6 @@
 #include <iostream>
 #include <enet/enet.h>
+#include <string>
 
 int main(){
 
@@ -31,9 +32,20 @@ int main(){
                 case ENET_EVENT_TYPE_CONNECT:
                     std::cout<<"A new client connected from host: "<<event.peer->address.host<<" and port: "<<event.peer->address.port<<std::endl;
                     break;
-                case ENET_EVENT_TYPE_RECEIVE:
-                    std::cout<<"Packet Lenght - "<<event.packet->dataLength<<"\nPacket Data - "<<event.packet->data<<"\nhost - "<<event.peer->address.host<<"\nPort - "<<event.peer->address.port<<"\nChannelID - "<<event.channelID<<std::endl; 
+                case ENET_EVENT_TYPE_RECEIVE:{
+                    std::string Inc_Msg = (char*)event.packet->data;
+                    ENetPacket* boradpacket = enet_packet_create(Inc_Msg.c_str(),Inc_Msg.length()+1,ENET_PACKET_FLAG_RELIABLE);
+                    for(size_t i = 0;i < server->peerCount;i++){
+                        ENetPeer* target = &server->peers[i];
+                        if(target->state == ENET_PEER_STATE_CONNECTED && target!=event.peer){
+                            enet_peer_send(target,0,boradpacket);
+                        }
+                    }
+
+                    enet_host_flush(server);
+                    enet_packet_destroy(event.packet);
                     break;
+                }
                 case ENET_EVENT_TYPE_DISCONNECT:
                     std::cout<<"Disconnected Host - "<<event.peer->address.host<<"\nPort - "<<event.peer->address.port<<std::endl;
                     break;
