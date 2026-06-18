@@ -1,108 +1,135 @@
+#include <iostream>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <enet/enet.h>
-// Edited by Harkirat Singh
-#include <iostream>
-
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    glViewport(0, 0, width, height);
-}
-
-int test_glm() {
-    glm::vec3 pos(0.0f, 0.0f, 0.0f);
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(1.0f, 0.0f, 0.0f));
-    glm::vec4 result = model * glm::vec4(pos, 1.0f);
-    bool passed = (result.x == 1.0f);
-    std::cout << "[GLM]   " << (passed ? "PASS" : "FAIL")
-              << " - translate test, x = " << result.x << "\n";
-    return passed ? 0 : 1;
-}
-
-int test_enet() {
-    if (enet_initialize() != 0) {
-        std::cout << "[ENET]  FAIL - could not initialize\n";
-        return 1;
-    }
-    ENetAddress address;
-    ENetHost* host = enet_host_create(nullptr, 1, 2, 0, 0);
-    if (host == nullptr) {
-        std::cout << "[ENET]  FAIL - could not create host\n";
-        enet_deinitialize();
-        return 1;
-    }
-    std::cout << "[ENET]  PASS - initialized and created client host\n";
-    enet_host_destroy(host);
-    enet_deinitialize();
-    return 0;
-}
+#include "ShaderClass.h"
+#include "VAO.h"
+#include "VBO.h"
+#include "EBO.h"
+#include <cmath>
+#include <vector>
 
 int main() {
-    std::cout << "=== Library Test ===\n\n";
+	glfwInit();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // --- GLM ---
-    test_glm();
+	float WindowWidth = 1200.0f;
+	float WindowHeight = 800.0f;
+	float AspectRatio = WindowWidth / WindowHeight;
+	//define the window with it's properties
+	GLFWwindow* window = glfwCreateWindow(WindowWidth, WindowHeight, "FirstWin", NULL, NULL);
+	if (window == NULL) {
+		std::cout << "Window Creation Failed" << std::endl;
+		return -1;
+	}
 
-    // --- ENet ---
-    test_enet();
+	//vertices of the triangle
+	std::vector<GLfloat> vertices;
+	vertices.reserve(31 * 3);
+	
+	const float PI = 3.14159265359f;
+	GLfloat radius = 0.15f;
+	GLfloat xcenter = 0.0f;
+	GLfloat ycenter = 0.0f;
 
-    // --- GLFW ---
-    if (!glfwInit()) {
-        std::cout << "[GLFW]  FAIL - could not initialize\n";
-        return -1;
-    }
-    std::cout << "[GLFW]  PASS - initialized\n";
+	vertices.push_back(xcenter);
+	vertices.push_back(ycenter);
+	vertices.push_back(0.0f);
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	for (int i = 0;i <= 30;i++) {
+		float angledeg = i * 12.0f;
+		float anglerad = angledeg * (PI / 180.0f);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Library Test", nullptr, nullptr);
-    if (!window) {
-        std::cout << "[GLFW]  FAIL - could not create window\n";
-        glfwTerminate();
-        return -1;
-    }
-    std::cout << "[GLFW]  PASS - window created\n";
+		GLfloat xcurr = (xcenter + radius * (cosf(anglerad))) / AspectRatio;
+		GLfloat ycurr = ycenter + radius * (sinf(anglerad));
+		
+		vertices.push_back(xcurr);
+		vertices.push_back(ycurr);
+		vertices.push_back(0.0f);
+	}
 
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	//make the window's context curretn
+	glfwMakeContextCurrent(window);
+	
+	//load OpenGL data
+	gladLoadGL();
 
-    // --- GLAD ---
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::cout << "[GLAD]  FAIL - could not load OpenGL\n";
-        return -1;
-    }
-    std::cout << "[GLAD]  PASS - OpenGL loaded\n";
-    std::cout << "[GL]    Version: " << glGetString(GL_VERSION) << "\n";
-    std::cout << "[GL]    Renderer: " << glGetString(GL_RENDERER) << "\n";
+	//tells OpenGL which area to fill the defined color
+	glViewport(0, 0, WindowWidth, WindowHeight);
+	
 
-    std::cout << "\n=== All tests passed! Showing window for 3 seconds ===\n";
+	//creating an empty container to store future bullshit that we do
+	//vertexshader stores the location of the container
+	Shader shaderProgram("../Resources/Shaders/default.vert", "../Resources/Shaders/default.frag");
 
-    // simple color cycle to show rendering works
-    float time = 0.0f;
-    while (!glfwWindowShouldClose(window) && time < 3.0f) {
-        float r = (sin(time * 2.0f) + 1.0f) / 2.0f;
-        float g = (sin(time * 2.0f + 2.0f) + 1.0f) / 2.0f;
-        float b = (sin(time * 2.0f + 4.0f) + 1.0f) / 2.0f;
+	VAO VAO1;
+	VAO1.Bind();
+	
+	VBO VBO1(vertices, vertices.size()*sizeof(GLfloat));
 
-        glClearColor(r, g, b, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+	VAO1.LinkVBO(VBO1, 0);
+	VAO1.Unbind();
+	VBO1.Unbind();
 
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-        time += 0.016f;  // ~60fps
-    }
+	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "u_Pos");
 
-    glfwDestroyWindow(window);
-    glfwTerminate();
-    return 0;
+	//define the color
+	glClearColor(0.5f, 0.0f, 0.0f, 1.0f);
+	//set the color to a back buffer
+	glClear(GL_COLOR_BUFFER_BIT);
+	//swap front and back buffer
+	glfwSwapBuffers(window);
+
+
+	float lastFrameTime = 0.0f;
+	float DeltaTime = 0.0f;
+	float accumPosx = 0.0f;
+	float accumPosy = 0.0f;
+	while(!glfwWindowShouldClose(window)){
+
+		float currFrameTime = glfwGetTime();
+		DeltaTime = currFrameTime - lastFrameTime;
+
+
+		//MATH GOES HERE
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+			float movey = 0.3f * DeltaTime;
+			accumPosy += movey;
+		}
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+			float movey = 0.3f * DeltaTime;
+			accumPosy -= movey;
+		}
+		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+			float movex = 0.3f * DeltaTime;
+			accumPosx += movex;
+		}
+		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+			float movex = 0.3f * DeltaTime;
+			accumPosx -= movex;
+		}
+		glClearColor(0.3f, 0.2f, 0.8f, 0.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		shaderProgram.Activate();
+		glUniform2f(uniID, accumPosx, accumPosy);
+		
+
+		VAO1.Bind();
+		glDrawArrays(GL_TRIANGLE_FAN,0,32);
+		glfwSwapBuffers(window);
+		
+		//pol for and process event
+		glfwPollEvents();
+		lastFrameTime = currFrameTime;
+	}
+
+
+
+	VAO1.Delete();
+	VBO1.Delete();
+	shaderProgram.Delete();
+	glfwTerminate();
+	return 0;
 }
-//Code is Running
-//my code is also running.
-//
-//charan's code is running
-//another attempt to connect vs code to github
-//Like Subscrible and Comment down below
