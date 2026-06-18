@@ -72,7 +72,7 @@ int main() {
 
 	//creating an empty container to store future bullshit that we do
 	//vertexshader stores the location of the container
-	Shader shaderProgram("../Resources/Shaders/default.vert", "../Resources/Shaders/default.frag");
+	Shader shaderProgram("../resources/shaders/default.vert", "../resources/shaders/default.frag");
 
 	VAO VAO1;
 	VAO1.Bind();

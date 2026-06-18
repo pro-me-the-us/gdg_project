@@ -1,5 +1,5 @@
 #include <iostream>
-#include "../Include/Tiles.h"
+#include "../include/Tiles.h"
 
 Tiles::Tiles(){
     //nothing to do

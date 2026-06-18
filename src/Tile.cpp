@@ -1,6 +1,6 @@
 #include<iostream>
 #include <fstream>
-#include "../Include/Tile.h"
+#include "../include/Tile.h"
 
 Tile::Tile()
 {
