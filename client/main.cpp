@@ -7,6 +7,11 @@
 #include "EBO.h"
 #include <cmath>
 #include <vector>
+#define ORIGINAL_TILE_SIZE 16
+#define SCALE 3
+#define TILE_SIZE ORIGINAL_TILE_SIZE*SCALE
+#define MAX_SCREEN_COL 16
+#define MAX_SCREEN_ROW 12
 
 /*
     //Screen settings
@@ -26,14 +31,16 @@
 
 */
 
+
+
 int main() {
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	float WindowWidth = 800.0f;
-	float WindowHeight = 800.0f;
+	float WindowWidth = TILE_SIZE*MAX_SCREEN_COL;
+	float WindowHeight = TILE_SIZE*MAX_SCREEN_ROW;
 	float AspectRatio = WindowWidth / WindowHeight;
 	//define the window with it's properties
 	GLFWwindow* window = glfwCreateWindow(WindowWidth, WindowHeight, "FirstWin", NULL, NULL);
@@ -42,15 +49,16 @@ int main() {
 		return -1;
 	}
 
-    float halfpxl = 8.0f/800.0f;
+	float length = (TILE_SIZE/2)/WindowWidth;
+	float height = (TILE_SIZE/2)/WindowHeight;
 
 	//vertices of the triangle
 	std::vector<GLfloat> vertices = 
     {
-        -halfpxl,   halfpxl,  0.0f,  // Top-Left
-        halfpxl,   halfpxl,  0.0f,  // Top-Right
-        halfpxl,  -halfpxl,  0.0f,  // Bottom-Right
-        -halfpxl,  -halfpxl,  0.0f   // Bottom-Left
+        -length,   height,  0.0f,  // Top-Left
+        length,   height,  0.0f,  // Top-Right
+        length,  -height,  0.0f,  // Bottom-Right
+        -length,  -height,  0.0f   // Bottom-Left
     };
 	
     std::vector<GLuint> indices = 
@@ -123,7 +131,7 @@ int main() {
 			float movex = 0.3f * DeltaTime;
 			accumPosx -= movex;
 		}
-		glClearColor(0.3f, 0.2f, 0.8f, 0.0f);
+		glClearColor(0.3f, 0.2f, 0.8f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		shaderProgram.Activate();
