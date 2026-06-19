@@ -49,8 +49,8 @@ int main() {
 		return -1;
 	}
 
-	float length = (TILE_SIZE/2)/WindowWidth;
-	float height = (TILE_SIZE/2)/WindowHeight;
+	float length = (TILE_SIZE/2.0f)/WindowWidth;
+	float height = (TILE_SIZE/2.0f)/WindowHeight;
 
 	//vertices of the triangle
 	std::vector<GLfloat> vertices = 
@@ -116,19 +116,19 @@ int main() {
 
 		//MATH GOES HERE
 		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-			float movey = 0.3f * DeltaTime;
+			float movey = 0.8f * DeltaTime;
 			accumPosy += movey;
 		}
 		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-			float movey = 0.3f * DeltaTime;
+			float movey = 0.8f * DeltaTime;
 			accumPosy -= movey;
 		}
 		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-			float movex = 0.3f * DeltaTime;
+			float movex = 0.8f * DeltaTime;
 			accumPosx += movex;
 		}
 		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-			float movex = 0.3f * DeltaTime;
+			float movex = 0.8f * DeltaTime;
 			accumPosx -= movex;
 		}
 		glClearColor(0.3f, 0.2f, 0.8f, 1.0f);
@@ -153,5 +153,6 @@ int main() {
 	VBO1.Delete();
 	shaderProgram.Delete();
 	glfwTerminate();
+	
 	return 0;
 }
