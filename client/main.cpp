@@ -1,4 +1,5 @@
 #include <iostream>
+#include <chrono>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "ShaderClass.h"
@@ -12,6 +13,8 @@
 #define TILE_SIZE ORIGINAL_TILE_SIZE*SCALE
 #define MAX_SCREEN_COL 16
 #define MAX_SCREEN_ROW 12
+#define VELOCITY 0.007f
+#define FPS 30
 
 /*
     //Screen settings
@@ -31,6 +34,66 @@
 
 */
 
+
+void run(GLFWwindow* window,Shader shaderProgram,VAO VAO1,GLuint uniID){
+
+	double drawInterval = 1000000000/FPS;
+
+	double delta=0;
+	std::chrono::time_point<std::chrono::steady_clock> lastTime;
+	lastTime = std::chrono::steady_clock::now();
+
+	std::chrono::time_point<std::chrono::steady_clock> currentTime;
+
+	long timer = 0;
+	long drawCount = 0;
+	
+	float accumPosx = 0.0f;
+	float accumPosy = 0.0f;
+
+	while(!glfwWindowShouldClose(window)){
+		currentTime = std::chrono::steady_clock::now();
+		auto elapsedTime = currentTime-lastTime;
+		delta += elapsedTime.count() / drawInterval;
+		timer += elapsedTime.count();
+		lastTime = currentTime;
+
+		bool moveup = glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS;
+		bool movedown = glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS;
+		bool moveright = glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS;
+		bool moveleft = glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS;
+
+		glClearColor(0.3f, 0.2f, 0.8f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		shaderProgram.Activate();
+		glUniform2f(uniID, accumPosx, accumPosy);
+		
+
+		VAO1.Bind();
+		glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
+		glfwSwapBuffers(window);
+		
+		//pol for and process event
+		glfwPollEvents();
+
+		if(delta>=1){
+			if(moveup) accumPosy+=VELOCITY;
+			if(movedown) accumPosy-=VELOCITY;
+			if(moveright) accumPosx+=VELOCITY;
+			if(moveleft) accumPosx-=VELOCITY;
+
+			delta--;
+			drawCount++;
+		}
+
+		if(timer>=1000000000){
+			std::cout<<"FPS : "<<drawCount<<"\n";
+			drawCount=0;
+			timer=0;
+		}
+	}
+}
 
 
 int main() {
@@ -106,48 +169,8 @@ int main() {
 
 	float lastFrameTime = 0.0f;
 	float DeltaTime = 0.0f;
-	float accumPosx = 0.0f;
-	float accumPosy = 0.0f;
-	while(!glfwWindowShouldClose(window)){
-
-		float currFrameTime = glfwGetTime();
-		DeltaTime = currFrameTime - lastFrameTime;
-
-
-		//MATH GOES HERE
-		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-			float movey = 0.8f * DeltaTime;
-			accumPosy += movey;
-		}
-		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-			float movey = 0.8f * DeltaTime;
-			accumPosy -= movey;
-		}
-		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-			float movex = 0.8f * DeltaTime;
-			accumPosx += movex;
-		}
-		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-			float movex = 0.8f * DeltaTime;
-			accumPosx -= movex;
-		}
-		glClearColor(0.3f, 0.2f, 0.8f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		shaderProgram.Activate();
-		glUniform2f(uniID, accumPosx, accumPosy);
-		
-
-		VAO1.Bind();
-		glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
-		glfwSwapBuffers(window);
-		
-		//pol for and process event
-		glfwPollEvents();
-		lastFrameTime = currFrameTime;
-	}
-
-
+	
+	run(window,shaderProgram,VAO1,uniID);
 
 	VAO1.Delete();
 	VBO1.Delete();
@@ -156,3 +179,6 @@ int main() {
 	
 	return 0;
 }
+
+
+
