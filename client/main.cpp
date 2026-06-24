@@ -8,6 +8,7 @@
 #include "EBO.h"
 #include <cmath>
 #include <vector>
+#include "Entity.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -17,26 +18,27 @@
 #define TILE_SIZE ORIGINAL_TILE_SIZE*SCALE
 #define MAX_SCREEN_COL 16
 #define MAX_SCREEN_ROW 12
-#define VELOCITY 0.007f
+#define VELOCITY 0.01f
 #define FPS 30
 
 
-void handleInput(GLFWwindow* window, float& accumPosx, float& accumPosy)
+void handleInput(GLFWwindow* window, Entity* Player)
 {
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) accumPosy += VELOCITY;
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) accumPosy -= VELOCITY;
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) accumPosx += VELOCITY;
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) accumPosx -= VELOCITY;
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) Player->attriby += VELOCITY;
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) Player->attriby -= VELOCITY;
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) Player->attribx += VELOCITY;
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) Player->attribx -= VELOCITY;
+	
 }
 
 
-void draw(Shader& shaderProgram, VAO& VAO1, GLuint uniID, GLuint texture, float accumPosx, float accumPosy)
+void draw(Shader& shaderProgram, VAO& VAO1, GLuint uniID, GLuint texture,Entity* Player)
 {
 	glClearColor(0.3f, 0.2f, 0.8f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	shaderProgram.Activate();
-	glUniform2f(uniID, accumPosx, accumPosy);
+	glUniform2f(uniID, Player->attribx, Player->attriby);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture);
@@ -47,14 +49,12 @@ void draw(Shader& shaderProgram, VAO& VAO1, GLuint uniID, GLuint texture, float 
 }
 
 
-void run(GLFWwindow* window, Shader shaderProgram, VAO VAO1, GLuint uniID, GLuint texture)
+void run(GLFWwindow* window, Shader shaderProgram, VAO VAO1, GLuint uniID, GLuint texture,Entity* Player)
 {
 	double drawInterval = 1000000000 / FPS;
 	double delta = 0;
 	long timer = 0;
 	long drawCount = 0;
-	float accumPosx = 0.0f;
-	float accumPosy = 0.0f;
 
 	auto lastTime = std::chrono::steady_clock::now();
 
@@ -66,13 +66,13 @@ void run(GLFWwindow* window, Shader shaderProgram, VAO VAO1, GLuint uniID, GLuin
 		timer += elapsedTime.count();
 		lastTime = currentTime;
 
-		draw(shaderProgram, VAO1, uniID, texture, accumPosx, accumPosy);
+		draw(shaderProgram, VAO1, uniID, texture,Player);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
-
+		
 		if (delta >= 1)
 		{
-			handleInput(window, accumPosx, accumPosy);
+			handleInput(window, Player);
 			delta--;
 			drawCount++;
 		}
@@ -123,6 +123,8 @@ std::cout << "W:" << w << " H:" << h << " CH:" << ch << std::endl;
 
 int main()
 {
+
+	Entity* Player = new Entity();
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -174,7 +176,7 @@ int main()
 
 	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "u_Pos");
 
-	run(window, shaderProgram, VAO1, uniID, texture);
+	run(window, shaderProgram, VAO1, uniID, texture,Player);
 
 	VAO1.Delete();
 	VBO1.Delete();

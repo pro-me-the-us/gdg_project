@@ -5,10 +5,10 @@
 class Entity
 {
     public:
-        int attribx;
-        int attriby;
-        int velx;
-        int vely;
+        float attribx;
+        float attriby;
+        float velx;
+        float vely;
         
         Entity();
 };
