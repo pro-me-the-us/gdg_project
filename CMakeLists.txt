@@ -17,11 +17,11 @@ add_executable(client
     src/PowerUp.cpp
     src/Power_Ups.cpp
     src/Tile.cpp
-    src/Tiles.cpp
     src/EBO.cpp
     src/VAO.cpp
     src/VBO.cpp
     src/ShaderClass.cpp
+    src/Tile_Manager.cpp
 )
 
 

@@ -9,10 +9,9 @@ class Tile
     public:
         int ID;
         bool collision;
-        std::fstream* file_ptr;    
+        unsigned int texture_ID;
 
-        Tile();
-        ~Tile();
+        Tile(int ID);
 };
 
 #endif

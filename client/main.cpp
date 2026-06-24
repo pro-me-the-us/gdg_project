@@ -1,4 +1,7 @@
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <chrono>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -9,6 +12,9 @@
 #include <cmath>
 #include <vector>
 #include "Entity.h"
+#include "Tile.h"
+#include "Tile_Manager.h"
+#include "Map.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -19,7 +25,7 @@
 #define MAX_SCREEN_COL 16
 #define MAX_SCREEN_ROW 12
 #define VELOCITY 0.01f
-#define FPS 30
+#define FPS 60
 
 
 void handleInput(GLFWwindow* window, Entity* Player)
@@ -100,15 +106,14 @@ GLuint loadTexture(const char* path)
 
 	int w, h, ch;
 	stbi_set_flip_vertically_on_load(true);
-	unsigned char* data = stbi_load("../resources/sprites/player.png", &w, &h, &ch, 0);
-std::cout << "Texture: " << (data ? "OK" : "FAILED") << std::endl;
-std::cout << "W:" << w << " H:" << h << " CH:" << ch << std::endl;
-	if (!data)
-{
-    std::cout << "STB Error: " << stbi_failure_reason() << std::endl;
-    return -1;}
-	if (!data)
-	{
+	unsigned char* data = stbi_load(path, &w, &h, &ch, 0);
+	std::cout << "Texture: " << (data ? "OK" : "FAILED") << std::endl;
+	std::cout << "W:" << w << " H:" << h << " CH:" << ch << std::endl;
+	if (!data){
+		std::cout << "STB Error: " << stbi_failure_reason() << std::endl;
+		return -1;
+	}
+	if (!data){
 		std::cout << "Failed to load texture: " << path << std::endl;
 		return 0;
 	}
@@ -120,9 +125,33 @@ std::cout << "W:" << w << " H:" << h << " CH:" << ch << std::endl;
 	return texture;
 }
 
+void Draw_Map(const char* path,Map& map){
+	std::ifstream file(path);
+	std::string line;
+
+	if (!file.is_open()) 
+    {
+        std::cout << "Failed To Open File\n";
+        return;
+    }
+
+	while (std::getline(file, line)) 
+    {
+        std::vector<int> currentRow;
+        std::stringstream ss(line);
+        int tile_ID;
+        while (ss >> tile_ID) 
+        {
+            currentRow.push_back(tile_ID);
+        }
+        map.mapTileNumber.push_back(currentRow);
+    }
+    file.close();
+}
 
 int main()
-{
+{	
+	
 
 	Entity* Player = new Entity();
 	glfwInit();
@@ -171,17 +200,29 @@ int main()
 	VBO1.Unbind();
 	EBO1.Unbind();
 
-	GLuint texture = loadTexture("../resources/sprites/player.png");
-	if (texture == 0) return -1;
+	Tile floor = Tile(0);
+	Tile wall = Tile(1);
+	floor.texture_ID = loadTexture("../resources/sprites/floor.png");
+	wall.texture_ID = loadTexture("../resources/sprites/wall.png");
+
+	Tile_Manager tile_manager;
+	tile_manager.tiles.push_back(floor);
+	tile_manager.tiles.push_back(wall);
+
+	Map map;
+	Draw_Map("../resources/Map/map.txt",map);
+
+	GLuint Player_texture = loadTexture("../resources/sprites/player.png");
+	if (Player_texture == 0) return -1;
 
 	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "u_Pos");
 
-	run(window, shaderProgram, VAO1, uniID, texture,Player);
+	run(window, shaderProgram, VAO1, uniID, Player_texture,Player);
 
 	VAO1.Delete();
 	VBO1.Delete();
 	shaderProgram.Delete();
 	glfwTerminate();
-
+	delete(Player);
 	return 0;
 }

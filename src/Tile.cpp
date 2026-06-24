@@ -2,18 +2,10 @@
 #include <fstream>
 #include "../include/Tile.h"
 
-Tile::Tile()
+Tile::Tile(int ID)
 {
-    ID = 0;
+    this->ID = ID;
     collision = false;
-    file_ptr=nullptr;
-}
-
-Tile::~Tile()
-{
-    if(file_ptr != nullptr){
-        if(file_ptr->is_open()) file_ptr->close();
-        delete file_ptr;
-    }
+    texture_ID=0;
 }
 

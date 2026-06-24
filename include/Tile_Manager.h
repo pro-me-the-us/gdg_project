@@ -1,15 +1,15 @@
-#ifndef TILES_H
-#define TILES_H
+#ifndef TILE_MANAGER_H
+#define TILE_MANAGER_H
 
 
 #include "Tile.h"
 #include <vector>
 
-class Tiles
+class Tile_Manager
 {   
     public:
         std::vector<Tile> tiles;
-        Tiles();
+        Tile_Manager();
 };
 
 #endif
