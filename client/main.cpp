@@ -3,8 +3,12 @@
 #include <sstream>
 #include <string>
 #include <chrono>
+#include <random>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "ShaderClass.h"
 #include "VAO.h"
 #include "VBO.h"
@@ -24,7 +28,7 @@
 #define TILE_SIZE ORIGINAL_TILE_SIZE*SCALE
 #define MAX_SCREEN_COL 16
 #define MAX_SCREEN_ROW 12
-#define VELOCITY 0.01f
+#define VELOCITY 5.0f
 #define FPS 60
 
 
@@ -38,24 +42,20 @@ void handleInput(GLFWwindow* window, Entity* Player)
 }
 
 
-void draw(Shader& shaderProgram, VAO& VAO1, GLuint uniID, GLuint texture,Entity* Player)
+void draw(Shader& shaderProgram, VAO& VAO1, GLuint texture)
 {
-	glClearColor(0.3f, 0.2f, 0.8f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
 	shaderProgram.Activate();
-	glUniform2f(uniID, Player->attribx, Player->attriby);
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glUniform1i(glGetUniformLocation(shaderProgram.ID, "u_Texture"), 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glUniform1i(glGetUniformLocation(shaderProgram.ID, "u_Texture"), 0);
 
-	VAO1.Bind();
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    VAO1.Bind();
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
 
-void run(GLFWwindow* window, Shader shaderProgram, VAO VAO1, GLuint uniID, GLuint texture,Entity* Player)
+void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,Entity* Player,Map& map,Tile_Manager& tile_manager)
 {
 	double drawInterval = 1000000000 / FPS;
 	double delta = 0;
@@ -64,15 +64,72 @@ void run(GLFWwindow* window, Shader shaderProgram, VAO VAO1, GLuint uniID, GLuin
 
 	auto lastTime = std::chrono::steady_clock::now();
 
+	glm::mat4 projection = glm::ortho(0.0f,768.0f,0.0f,576.0f,1.0f,-1.0f);
+	shaderProgram.Activate();
+	int proj_loc = glGetUniformLocation(shaderProgram.ID,"u_Projection");
+	int view_loc = glGetUniformLocation(shaderProgram.ID,"u_View");
+	int model_loc = glGetUniformLocation(shaderProgram.ID,"u_Model");
+	std::cout<<"Projection : "<<proj_loc<<"    Model : "<<model_loc<<"    View : "<<view_loc<<std::endl;
+	glUniformMatrix4fv(proj_loc,1,GL_FALSE,glm::value_ptr(projection));
+
+	float tileWorldX = MAX_SCREEN_COL * TILE_SIZE;
+	float tileWorldY = MAX_SCREEN_ROW * TILE_SIZE;
+	
+	glClearColor(0.3f, 0.2f, 0.8f, 1.0f);
+	
+
 	while (!glfwWindowShouldClose(window))
 	{
+		glClear(GL_COLOR_BUFFER_BIT);
 		auto currentTime = std::chrono::steady_clock::now();
 		auto elapsedTime = currentTime - lastTime;
 		delta += elapsedTime.count() / drawInterval;
 		timer += elapsedTime.count();
 		lastTime = currentTime;
+		float Camx = (Player->attribx)-(TILE_SIZE * MAX_SCREEN_COL)/2;
+		float Camy = (Player->attriby)-(TILE_SIZE * MAX_SCREEN_ROW)/2;
+		
 
-		draw(shaderProgram, VAO1, uniID, texture,Player);
+		glm::mat4 view = glm::mat4(1.0f);
+		view = glm::translate(view,glm::vec3(-Camx,-Camy,0.0f));
+		glUniformMatrix4fv(view_loc,1,GL_FALSE,glm::value_ptr(view));
+
+		glm::mat4 model = glm::mat4(1.0f);
+		model = glm::translate(model,glm::vec3(tileWorldX,tileWorldY,0.0f));
+		glUniformMatrix4fv(model_loc,1,GL_FALSE,glm::value_ptr(model));
+
+		for(int row = 0; row < map.maxWorldRow; row++) 
+		{
+			for(int col = 0; col < map.maxWorldCol; col++) 
+			{
+				// Find out if this is a floor (0) or wall (1)
+				int tileID = map.mapTileNumber[row][col];
+				
+				// Safety check to ensure the ID actually exists in your Tile Manager
+				if (tileID >= 0 && tileID < tile_manager.tiles.size()) 
+				{
+					// Grab the specific texture ID from memory
+					GLuint currentTileTexture = tile_manager.tiles[tileID].texture_ID;
+					
+					// Calculate absolute world pixel coordinates
+					float tileWorldX = col * TILE_SIZE;
+					float tileWorldY = row * TILE_SIZE;
+					
+					// Move the Model Matrix to that exact pixel
+					glm::mat4 tile_mat = glm::mat4(1.0f);
+					tile_mat = glm::translate(tile_mat, glm::vec3(tileWorldX, tileWorldY, 0.0f));
+					glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(tile_mat));
+					
+					// Draw the tile quad with the correct texture
+					draw(shaderProgram, VAO1, currentTileTexture); 
+				}
+			}
+		}
+		
+		glm::mat4 player_mat = glm::mat4(1.0f);
+		player_mat = glm::translate(player_mat,glm::vec3(Player->attribx,Player->attriby,0.0f));
+		glUniformMatrix4fv(model_loc,1,GL_FALSE,glm::value_ptr(player_mat));
+		draw(shaderProgram,VAO1,texture);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 		
@@ -93,7 +150,7 @@ void run(GLFWwindow* window, Shader shaderProgram, VAO VAO1, GLuint uniID, GLuin
 }
 
 
-GLuint loadTexture(const char* path)
+GLuint loadTexture(const char* path,const char* name)
 {
 	unsigned int texture;
 	glGenTextures(1, &texture);
@@ -107,7 +164,7 @@ GLuint loadTexture(const char* path)
 	int w, h, ch;
 	stbi_set_flip_vertically_on_load(true);
 	unsigned char* data = stbi_load(path, &w, &h, &ch, 0);
-	std::cout << "Texture: " << (data ? "OK" : "FAILED") << std::endl;
+	std::cout <<name<<" Texture: "<< (data ? "OK" : "FAILED") << std::endl;
 	std::cout << "W:" << w << " H:" << h << " CH:" << ch << std::endl;
 	if (!data){
 		std::cout << "STB Error: " << stbi_failure_reason() << std::endl;
@@ -125,7 +182,7 @@ GLuint loadTexture(const char* path)
 	return texture;
 }
 
-void Draw_Map(const char* path,Map& map){
+void Load_Map(const char* path,Map& map){
 	std::ifstream file(path);
 	std::string line;
 
@@ -134,19 +191,22 @@ void Draw_Map(const char* path,Map& map){
         std::cout << "Failed To Open File\n";
         return;
     }
-
-	while (std::getline(file, line)) 
+	
+	int row = 0;
+	while (std::getline(file, line) && row<map.maxWorldRow) 
     {
-        std::vector<int> currentRow;
         std::stringstream ss(line);
         int tile_ID;
-        while (ss >> tile_ID) 
+		int col = 0;
+        while (ss >> tile_ID && col<map.maxWorldCol) 
         {
-            currentRow.push_back(tile_ID);
+            map.mapTileNumber[row][col] = tile_ID;
+			col++;
         }
-        map.mapTileNumber.push_back(currentRow);
+        row++;
     }
     file.close();
+	std::cout<<"Map Loaded Successfully\n";
 }
 
 int main()
@@ -154,6 +214,8 @@ int main()
 	
 
 	Entity* Player = new Entity();
+	Player->attribx=0;
+	Player->attriby=0;
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -175,8 +237,8 @@ int main()
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	float spriteW = 82.0f / WindowWidth;  // actual sprite width
-    float spriteH = 80.0f / WindowHeight; // actual sprite height
+	float spriteW = 48.0f / 2.0f;  // actual sprite width
+    float spriteH = 48.0f / 2.0f; // actual sprite height
 
 	std::vector<GLfloat> vertices =
 {
@@ -202,22 +264,36 @@ int main()
 
 	Tile floor = Tile(0);
 	Tile wall = Tile(1);
-	floor.texture_ID = loadTexture("../resources/sprites/floor.png");
-	wall.texture_ID = loadTexture("../resources/sprites/wall.png");
+	floor.texture_ID = loadTexture("../resources/sprites/floor.png","Floor");
+	wall.texture_ID = loadTexture("../resources/sprites/wall.png","Wall");
 
 	Tile_Manager tile_manager;
 	tile_manager.tiles.push_back(floor);
 	tile_manager.tiles.push_back(wall);
 
 	Map map;
-	Draw_Map("../resources/Map/map.txt",map);
+	srand(time(NULL));
+	static std::random_device rd;
+    static std::mt19937 gen(rd());
+    
+    // Set the distribution range to [1, 10]
+    std::uniform_int_distribution<> distr(1, 10);
+    
+    int ran_num = distr(gen);
+	std::string map_path = "../resources/Map/map"+std::to_string(ran_num)+".txt";
+	Load_Map(map_path.c_str(),map);
+	std::cout<<"Map"<<ran_num<<'\n';
 
-	GLuint Player_texture = loadTexture("../resources/sprites/player.png");
-	if (Player_texture == 0) return -1;
+	GLuint Player_texture = loadTexture("../resources/sprites/player.png","Player");
+	std::cout << "Player Texture ID: " << Player_texture << "\n";
+	if (Player_texture == 0) {
+		std::cout << "CRITICAL ERROR: Player Texture failed to load!\n";
+	}
 
-	GLuint uniID = glGetUniformLocation(shaderProgram.ID, "u_Pos");
 
-	run(window, shaderProgram, VAO1, uniID, Player_texture,Player);
+
+
+	run(window, shaderProgram, VAO1, Player_texture,Player,map,tile_manager);
 
 	VAO1.Delete();
 	VBO1.Delete();

@@ -7,8 +7,12 @@ out vec2 TexCoord;
 
 uniform vec2 u_Pos;
 
+uniform mat4 u_Model;
+uniform mat4 u_View;
+uniform mat4 u_Projection;
+
 void main()
 {
-    gl_Position = vec4(aPos.x + u_Pos.x, aPos.y + u_Pos.y, aPos.z, 1.0);
+    gl_Position = u_Projection*u_View*u_Model*vec4(aPos,1.0);
     TexCoord = aTexCoord;
 }
