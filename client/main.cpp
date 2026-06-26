@@ -102,25 +102,19 @@ void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,En
 		{
 			for(int col = 0; col < map.maxWorldCol; col++) 
 			{
-				// Find out if this is a floor (0) or wall (1)
 				int tileID = map.mapTileNumber[row][col];
 				
-				// Safety check to ensure the ID actually exists in your Tile Manager
 				if (tileID >= 0 && tileID < tile_manager.tiles.size()) 
 				{
-					// Grab the specific texture ID from memory
 					GLuint currentTileTexture = tile_manager.tiles[tileID].texture_ID;
 					
-					// Calculate absolute world pixel coordinates
 					float tileWorldX = col * TILE_SIZE;
 					float tileWorldY = row * TILE_SIZE;
 					
-					// Move the Model Matrix to that exact pixel
 					glm::mat4 tile_mat = glm::mat4(1.0f);
 					tile_mat = glm::translate(tile_mat, glm::vec3(tileWorldX, tileWorldY, 0.0f));
 					glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(tile_mat));
 					
-					// Draw the tile quad with the correct texture
 					draw(shaderProgram, VAO1, currentTileTexture); 
 				}
 			}
@@ -276,7 +270,6 @@ int main()
 	static std::random_device rd;
     static std::mt19937 gen(rd());
     
-    // Set the distribution range to [1, 10]
     std::uniform_int_distribution<> distr(1, 10);
     
     int ran_num = distr(gen);
