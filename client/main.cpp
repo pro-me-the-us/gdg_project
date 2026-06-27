@@ -33,12 +33,24 @@
 #define FPS 60
 
 
-void handleInput(GLFWwindow* window, Entity* Player)
+void handleInput(GLFWwindow* window, Entity* Player,int& dirID)
 {
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) Player->attriby += VELOCITY;
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) Player->attriby -= VELOCITY;
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) Player->attribx += VELOCITY;
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) Player->attribx -= VELOCITY;
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){ 
+		Player->attriby += VELOCITY;
+		dirID = 1;
+	}
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){ 
+		Player->attriby -= VELOCITY;
+		dirID = 2;
+	}
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){ 
+		Player->attribx += VELOCITY;
+		dirID = 4;
+	}
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){ 
+		Player->attribx -= VELOCITY;
+		dirID = 3;
+	}
 	
 }
 
@@ -54,96 +66,6 @@ void draw(Shader& shaderProgram, VAO& VAO1, GLuint texture)
     VAO1.Bind();
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
-
-
-void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,Entity* Player,Map& map,Tile_Manager& tile_manager)
-{
-	double drawInterval = 1000000000 / FPS;
-	double delta = 0;
-	long timer = 0;
-	long drawCount = 0;
-
-	auto lastTime = std::chrono::steady_clock::now();
-
-	glm::mat4 projection = glm::ortho(0.0f,768.0f,0.0f,576.0f,1.0f,-1.0f);
-	shaderProgram.Activate();
-	int proj_loc = glGetUniformLocation(shaderProgram.ID,"u_Projection");
-	int view_loc = glGetUniformLocation(shaderProgram.ID,"u_View");
-	int model_loc = glGetUniformLocation(shaderProgram.ID,"u_Model");
-	std::cout<<"Projection : "<<proj_loc<<"    Model : "<<model_loc<<"    View : "<<view_loc<<std::endl;
-	glUniformMatrix4fv(proj_loc,1,GL_FALSE,glm::value_ptr(projection));
-
-	float tileWorldX = MAX_SCREEN_COL * TILE_SIZE;
-	float tileWorldY = MAX_SCREEN_ROW * TILE_SIZE;
-	
-	glClearColor(0.3f, 0.2f, 0.8f, 1.0f);
-	
-
-	while (!glfwWindowShouldClose(window))
-	{
-		glClear(GL_COLOR_BUFFER_BIT);
-		auto currentTime = std::chrono::steady_clock::now();
-		auto elapsedTime = currentTime - lastTime;
-		delta += elapsedTime.count() / drawInterval;
-		timer += elapsedTime.count();
-		lastTime = currentTime;
-		float Camx = (Player->attribx)-(TILE_SIZE * MAX_SCREEN_COL)/2;
-		float Camy = (Player->attriby)-(TILE_SIZE * MAX_SCREEN_ROW)/2;
-		
-
-		glm::mat4 view = glm::mat4(1.0f);
-		view = glm::translate(view,glm::vec3(-Camx,-Camy,0.0f));
-		glUniformMatrix4fv(view_loc,1,GL_FALSE,glm::value_ptr(view));
-
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model,glm::vec3(tileWorldX,tileWorldY,0.0f));
-		glUniformMatrix4fv(model_loc,1,GL_FALSE,glm::value_ptr(model));
-
-		for(int row = 0; row < map.maxWorldRow; row++) 
-		{
-			for(int col = 0; col < map.maxWorldCol; col++) 
-			{
-				int tileID = map.mapTileNumber[row][col];
-				
-				if (tileID >= 0 && tileID < tile_manager.tiles.size()) 
-				{
-					GLuint currentTileTexture = tile_manager.tiles[tileID].texture_ID;
-					
-					float tileWorldX = col * TILE_SIZE;
-					float tileWorldY = row * TILE_SIZE;
-					
-					glm::mat4 tile_mat = glm::mat4(1.0f);
-					tile_mat = glm::translate(tile_mat, glm::vec3(tileWorldX, tileWorldY, 0.0f));
-					glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(tile_mat));
-					
-					draw(shaderProgram, VAO1, currentTileTexture); 
-				}
-			}
-		}
-		
-		glm::mat4 player_mat = glm::mat4(1.0f);
-		player_mat = glm::translate(player_mat,glm::vec3(Player->attribx,Player->attriby,0.0f));
-		glUniformMatrix4fv(model_loc,1,GL_FALSE,glm::value_ptr(player_mat));
-		draw(shaderProgram,VAO1,texture);
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-		
-		if (delta >= 1)
-		{
-			handleInput(window, Player);
-			delta--;
-			drawCount++;
-		}
-
-		if (timer >= 1000000000)
-		{
-			std::cout << "FPS : " << drawCount << "\n";
-			drawCount = 0;
-			timer = 0;
-		}
-	}
-}
-
 
 GLuint loadTexture(const char* path,const char* name)
 {
@@ -176,6 +98,177 @@ GLuint loadTexture(const char* path,const char* name)
 
 	return texture;
 }
+
+
+void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,Entity* Player,Map& map,Tile_Manager& tile_manager)
+{
+	double drawInterval = 1000000000 / FPS;
+	double delta = 0;
+	long timer = 0;
+	long drawCount = 0;
+
+	auto lastTime = std::chrono::steady_clock::now();
+
+	glm::mat4 projection = glm::ortho(0.0f,768.0f,0.0f,576.0f,1.0f,-1.0f);
+	shaderProgram.Activate();
+	int proj_loc = glGetUniformLocation(shaderProgram.ID,"u_Projection");
+	int view_loc = glGetUniformLocation(shaderProgram.ID,"u_View");
+	int model_loc = glGetUniformLocation(shaderProgram.ID,"u_Model");
+	std::cout<<"Projection : "<<proj_loc<<"    Model : "<<model_loc<<"    View : "<<view_loc<<std::endl;
+	glUniformMatrix4fv(proj_loc,1,GL_FALSE,glm::value_ptr(projection));
+
+	float tileWorldX = MAX_SCREEN_COL * TILE_SIZE;
+	float tileWorldY = MAX_SCREEN_ROW * TILE_SIZE;
+	
+	glClearColor(0.3f, 0.2f, 0.8f, 1.0f);
+	
+	//1-top left
+    //2-top right
+    //3-bottom left
+    //4-bottom right
+    int currID = 1;
+    
+    //1-up
+    //2-down
+    //3-left
+    //4-right
+    int direction_ID=1;
+
+	float curr_off_x = 0.0f;
+	float curr_off_y = 0.0f;
+	
+	int scale_loc = glGetUniformLocation(shaderProgram.ID,"u_UVscale");
+	int offset_loc = glGetUniformLocation(shaderProgram.ID, "u_UVoffset");
+
+	GLuint Up = loadTexture("../resources/sprites/spritesheet/up.png", "up");
+    GLuint Down = loadTexture("../resources/sprites/spritesheet/down.png", "down");
+    GLuint Left = loadTexture("../resources/sprites/spritesheet/left.png", "left");
+    GLuint Right = loadTexture("../resources/sprites/spritesheet/right.png", "right");
+
+	GLuint curr_tex = Up;
+
+	glm::vec2 scale;
+    glm::vec2 offset;
+
+	while (!glfwWindowShouldClose(window))
+	{
+		glClear(GL_COLOR_BUFFER_BIT);
+		auto currentTime = std::chrono::steady_clock::now();
+		auto elapsedTime = currentTime - lastTime;
+		delta += elapsedTime.count() / drawInterval;
+		timer += elapsedTime.count();
+		lastTime = currentTime;
+		float Camx = (Player->attribx)-(TILE_SIZE * MAX_SCREEN_COL)/2;
+		float Camy = (Player->attriby)-(TILE_SIZE * MAX_SCREEN_ROW)/2;
+		
+
+		glm::mat4 view = glm::mat4(1.0f);
+		view = glm::translate(view,glm::vec3(-Camx,-Camy,0.0f));
+		glUniformMatrix4fv(view_loc,1,GL_FALSE,glm::value_ptr(view));
+
+		glm::mat4 model = glm::mat4(1.0f);
+		model = glm::translate(model,glm::vec3(tileWorldX,tileWorldY,0.0f));
+		glUniformMatrix4fv(model_loc,1,GL_FALSE,glm::value_ptr(model));
+
+		scale = glm::vec2(1.0f,1.0f);
+		offset = glm::vec2(0.0f,0.0f);
+
+		glUniform2f(scale_loc, scale.x, scale.y);
+		glUniform2f(offset_loc, offset.x,offset.y);
+
+		for(int row = 0; row < map.maxWorldRow; row++) 
+		{
+			for(int col = 0; col < map.maxWorldCol; col++) 
+			{
+				int tileID = map.mapTileNumber[row][col];
+				
+				if (tileID >= 0 && tileID < tile_manager.tiles.size()) 
+				{
+					GLuint currentTileTexture = tile_manager.tiles[tileID].texture_ID;
+					
+					float tileWorldX = col * TILE_SIZE;
+					float tileWorldY = row * TILE_SIZE;
+					
+					glm::mat4 tile_mat = glm::mat4(1.0f);
+					tile_mat = glm::translate(tile_mat, glm::vec3(tileWorldX, tileWorldY, 0.0f));
+					glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(tile_mat));
+					
+					draw(shaderProgram, VAO1, currentTileTexture); 
+				}
+			}
+		}
+		
+		glm::mat4 player_mat = glm::mat4(1.0f);
+		player_mat = glm::translate(player_mat,glm::vec3(Player->attribx,Player->attriby,0.0f));
+		glUniformMatrix4fv(model_loc,1,GL_FALSE,glm::value_ptr(player_mat));
+		
+		scale = glm::vec2(0.5f,0.5f);
+		offset = glm::vec2(0.0f,0.0f);
+		glUniform2f(scale_loc, scale.x, scale.y);
+        glUniform2f(offset_loc, curr_off_x, curr_off_y);
+
+
+		draw(shaderProgram,VAO1,curr_tex);
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+		
+		if (delta >= 1)
+		{
+			handleInput(window, Player,direction_ID);
+			if(direction_ID==1){
+                curr_tex=Up;
+            }
+            else if(direction_ID==2){
+                curr_tex=Down;
+            }
+            else if(direction_ID==3){
+                curr_tex=Left;
+            }
+            else if(direction_ID==4){
+                curr_tex=Right;
+            }
+
+			if(drawCount%10==0){
+                if (currID == 1) {
+                    // 1 - Top Left
+                    curr_off_x = 0.0f;
+                    curr_off_y = 0.0f; 
+                    currID++;
+                }
+                else if (currID == 2) {
+                    // 2 - Top Right
+                    curr_off_x = 0.5f;
+                    curr_off_y = 0.0f;
+                    currID++;
+                }
+                else if (currID == 3) {
+                    // 3 - Bottom Left
+                    curr_off_x = 0.0f;
+                    curr_off_y = 0.5f;
+                    currID++;
+                }
+                else if (currID == 4) {
+                    // 4 - Bottom Right
+                    curr_off_x = 0.5f;
+                    curr_off_y = 0.5f;
+                    currID = 1;
+                }
+            }
+			delta--;
+			drawCount++;
+		}
+
+		if (timer >= 1000000000)
+		{
+			std::cout << "FPS : " << drawCount << "\n";
+			drawCount = 0;
+			timer = 0;
+		}
+	}
+}
+
+
+
 
 void Load_Map(const char* path,Map& map){
 	std::ifstream file(path);
@@ -278,7 +371,7 @@ int main()
 	Load_Map(map_path.c_str(),map);
 	std::cout<<"Map"<<ran_num<<'\n';
 
-	GLuint Player_texture = loadTexture("../resources/sprites/player.png","Player");
+	GLuint Player_texture = loadTexture("../resources/sprites/spritesheet/up.png","up");
 	std::cout << "Player Texture ID: " << Player_texture << "\n";
 	if (Player_texture == 0) {
 		std::cout << "CRITICAL ERROR: Player Texture failed to load!\n";
