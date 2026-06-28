@@ -10,7 +10,7 @@ class Entity
         float velx;
         float vely;
         
-        Entity();
+        Entity(float velx , float vely);
 };
 
 

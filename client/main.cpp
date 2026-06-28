@@ -33,22 +33,22 @@
 #define FPS 60
 
 
-void handleInput(GLFWwindow* window, Entity* Player,int& dirID)
+void handleInput(GLFWwindow* window, Entity* player,int& dirID)
 {
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){ 
-		Player->attriby += VELOCITY;
+		player->attriby += player->vely;
 		dirID = 1;
 	}
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){ 
-		Player->attriby -= VELOCITY;
+	else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){ 
+		player->attriby -= player->vely;
 		dirID = 2;
 	}
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){ 
-		Player->attribx += VELOCITY;
+	else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){ 
+		player->attribx += player->velx;
 		dirID = 4;
 	}
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){ 
-		Player->attribx -= VELOCITY;
+	else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){ 
+		player->attribx -= player->velx;
 		dirID = 3;
 	}
 	
@@ -254,8 +254,9 @@ void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,En
                     currID = 1;
                 }
             }
-			delta--;
 			drawCount++;
+			delta--;
+			
 		}
 
 		if (timer >= 1000000000)
@@ -301,9 +302,8 @@ int main()
 {	
 	
 
-	Entity* Player = new Entity();
-	Player->attribx=0;
-	Player->attriby=0;
+	Entity* Player = new Entity(VELOCITY,VELOCITY);
+	
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
