@@ -30,26 +30,34 @@
 #define MAX_SCREEN_COL 16
 #define MAX_SCREEN_ROW 12
 #define VELOCITY 5.0f
-#define FPS 60
+#define FPS_World 60
+#define FPS_Player 6
 
 
-void handleInput(GLFWwindow* window, Entity* player,int& dirID)
+void handleInput(GLFWwindow* window, Entity* player,int& dirID, bool& isMoving)
 {
+	
+
+	isMoving = false;
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){ 
 		player->attriby += player->vely;
 		dirID = 1;
+		isMoving = true;
 	}
 	else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){ 
 		player->attriby -= player->vely;
 		dirID = 2;
+		isMoving = true;
 	}
 	else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){ 
 		player->attribx += player->velx;
 		dirID = 4;
+		isMoving = true;
 	}
 	else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){ 
 		player->attribx -= player->velx;
 		dirID = 3;
+		isMoving = true;
 	}
 	
 }
@@ -100,12 +108,16 @@ GLuint loadTexture(const char* path,const char* name)
 }
 
 
-void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,Entity* Player,Map& map,Tile_Manager& tile_manager)
+void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,Entity* Player,Map& map,Tile_Manager& tile_manager,bool& isMoving)
 {
-	double drawInterval = 1000000000 / FPS;
-	double delta = 0;
-	long timer = 0;
+	double WorlddrawInterval = 1000000000 / FPS_World;
+	double PlayerdrawInterval = 1000000000 / FPS_Player;
+	double deltaWorld = 0;
+	double deltaPlayer = 0;
+	long Worldtimer = 0;
+	long Playertimer = 0;
 	long drawCount = 0;
+	long animationCount = 0;
 
 	auto lastTime = std::chrono::steady_clock::now();
 
@@ -155,8 +167,10 @@ void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,En
 		glClear(GL_COLOR_BUFFER_BIT);
 		auto currentTime = std::chrono::steady_clock::now();
 		auto elapsedTime = currentTime - lastTime;
-		delta += elapsedTime.count() / drawInterval;
-		timer += elapsedTime.count();
+		deltaWorld += elapsedTime.count() / WorlddrawInterval;
+		deltaPlayer += elapsedTime.count() / PlayerdrawInterval;
+		Worldtimer += elapsedTime.count();
+		Playertimer += elapsedTime.count();
 		lastTime = currentTime;
 		float Camx = (Player->attribx)-(TILE_SIZE * MAX_SCREEN_COL)/2;
 		float Camy = (Player->attriby)-(TILE_SIZE * MAX_SCREEN_ROW)/2;
@@ -211,10 +225,8 @@ void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,En
 		draw(shaderProgram,VAO1,curr_tex);
 		glfwSwapBuffers(window);
 		glfwPollEvents();
-		
-		if (delta >= 1)
-		{
-			handleInput(window, Player,direction_ID);
+
+		if(deltaPlayer >= 1){
 			if(direction_ID==1){
                 curr_tex=Up;
             }
@@ -228,42 +240,60 @@ void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,En
                 curr_tex=Right;
             }
 
-			if(drawCount%10==0){
-                if (currID == 1) {
-                    // 1 - Top Left
-                    curr_off_x = 0.0f;
-                    curr_off_y = 0.0f; 
-                    currID++;
-                }
-                else if (currID == 2) {
-                    // 2 - Top Right
-                    curr_off_x = 0.5f;
-                    curr_off_y = 0.0f;
-                    currID++;
-                }
-                else if (currID == 3) {
-                    // 3 - Bottom Left
-                    curr_off_x = 0.0f;
-                    curr_off_y = 0.5f;
-                    currID++;
-                }
-                else if (currID == 4) {
-                    // 4 - Bottom Right
-                    curr_off_x = 0.5f;
-                    curr_off_y = 0.5f;
-                    currID = 1;
-                }
+            if (currID == 1 && isMoving) {
+            	// 1 - Top Left
+                curr_off_x = 0.0f;
+                curr_off_y = 0.0f; 
+                currID++;
             }
+            else if (currID == 2 && isMoving) {
+                // 2 - Top Right
+                curr_off_x = 0.5f;
+                curr_off_y = 0.0f;
+                currID++;
+            }
+            else if (currID == 3 && isMoving) {
+                // 3 - Bottom Left
+                curr_off_x = 0.0f;
+                curr_off_y = 0.5f;
+                currID++;
+            }
+            else if (currID == 4 && isMoving) {
+                // 4 - Bottom Right
+                curr_off_x = 0.5f;
+                curr_off_y = 0.5f;
+                currID = 1;
+            }
+			else{
+				curr_off_x = 0.0f;
+				curr_off_y = 0.0f;
+			}
+
+			animationCount++;
+			deltaPlayer--;
+        }
+		
+
+		if (Playertimer >= 1000000000)
+		{
+			animationCount = 0;
+			Playertimer = 0;
+		}
+		
+		if (deltaWorld >= 1)
+		{
+			handleInput(window, Player,direction_ID,isMoving);
+			
 			drawCount++;
-			delta--;
+			deltaWorld--;
 			
 		}
 
-		if (timer >= 1000000000)
+		if (Worldtimer >= 1000000000)
 		{
 			std::cout << "FPS : " << drawCount << "\n";
 			drawCount = 0;
-			timer = 0;
+			Worldtimer = 0;
 		}
 	}
 }
@@ -300,7 +330,7 @@ void Load_Map(const char* path,Map& map){
 
 int main()
 {	
-	
+	bool isMoving = false;
 
 	Entity* Player = new Entity(VELOCITY,VELOCITY);
 	
@@ -380,7 +410,7 @@ int main()
 
 
 
-	run(window, shaderProgram, VAO1, Player_texture,Player,map,tile_manager);
+	run(window, shaderProgram, VAO1, Player_texture,Player,map,tile_manager,isMoving);
 
 	VAO1.Delete();
 	VBO1.Delete();
