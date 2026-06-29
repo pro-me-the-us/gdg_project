@@ -14,7 +14,13 @@ sudo apt install -y \
     libglfw3-dev \
     libglm-dev \
     libenet-dev \
-    libgl1-mesa-dev
+    libgl1-mesa-dev \
+    pkg-config \
+    libxinerama-dev \
+    libxcursor-dev \
+    libxrandr-dev \
+    libxi-dev \
+    libxkbcommon-dev
 
 # --- Build ---
 echo ""
