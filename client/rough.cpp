@@ -25,7 +25,7 @@
 #define MAX_SCREEN_COL 16
 #define MAX_SCREEN_ROW 12
 #define VELOCITY 5.0f
-#define FPS 60
+#define FPS_World 60
 
 
 GLuint loadTexture(const char* path, const char* name)
@@ -130,7 +130,7 @@ int main()
     glm::vec2 offset = glm::vec2(0.0f,0.0f);
 
 
-    double drawInterval = 1000000000 / FPS;
+    double drawInterval = 1000000000 / FPS_World;
 	double delta = 0;
 	long timer = 0;
 	long drawCount = 0;
