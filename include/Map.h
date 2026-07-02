@@ -14,8 +14,7 @@ class Map
         const int maxWorldCol = 65;
         const int maxWorldRow = 65;
         std::vector<std::vector<int>> mapTileNumber;
-        void map_generator(ShaderClass& shaderProgram, VAO& VAO1, GLuint modelUniID, Tile_Manager& tileManager, float cameraX, float cameraY, float windowWidth, float windowHeight);
-
+        
         Map();
     
 };

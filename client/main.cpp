@@ -19,6 +19,8 @@
 #include "Tile.h"
 #include "Tile_Manager.h"
 #include "Map.h"
+#include "CollisionChecker.h"
+
 //start
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -34,31 +36,51 @@
 #define FPS_Player 6
 
 
-void handleInput(GLFWwindow* window, Entity* player,int& dirID, bool& isMoving)
+void handleInput(GLFWwindow* window, Entity* player,int& dirID,bool& isMoving,CollisionChecker CC,Map& map,Tile_Manager& tile_manager)
 {
 	
 
 	isMoving = false;
+	int futDir=0;
+
+	
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){ 
-		player->attriby += player->vely;
+		// player->attriby += player->vely;
 		dirID = 1;
+		futDir = 1;
 		isMoving = true;
 	}
 	else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){ 
-		player->attriby -= player->vely;
+		// player->attriby -= player->vely;
 		dirID = 2;
+		futDir = 2;
 		isMoving = true;
 	}
 	else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){ 
-		player->attribx += player->velx;
+		// player->attribx += player->velx;
 		dirID = 4;
+		futDir = 4;
 		isMoving = true;
 	}
 	else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){ 
-		player->attribx -= player->velx;
+		// player->attribx -= player->velx;
 		dirID = 3;
+		futDir = 3;
 		isMoving = true;
 	}
+
+	if (isMoving) 
+    {
+        player->collisionON = CC.CheckTile(player, futDir, map, tile_manager);
+
+        if (!player->collisionON) 
+        {
+            if (futDir == 1) player->attriby += player->vely;
+            else if (futDir == 2) player->attriby -= player->vely;
+            else if (futDir == 3) player->attribx -= player->velx;
+            else if (futDir == 4) player->attribx += player->velx;
+        }
+    }else futDir = 0;
 	
 }
 
@@ -108,7 +130,7 @@ GLuint loadTexture(const char* path,const char* name)
 }
 
 
-void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,Entity* Player,Map& map,Tile_Manager& tile_manager,bool& isMoving)
+void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,Entity* Player,Map& map,Tile_Manager& tile_manager,bool& isMoving,CollisionChecker CC)
 {
 	double WorlddrawInterval = 1000000000 / FPS_World;
 	double PlayerdrawInterval = 1000000000 / FPS_Player;
@@ -204,7 +226,7 @@ void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,En
 					float tileWorldY = row * TILE_SIZE;
 					
 					glm::mat4 tile_mat = glm::mat4(1.0f);
-					tile_mat = glm::translate(tile_mat, glm::vec3(tileWorldX, tileWorldY, 0.0f));
+					tile_mat = glm::translate(tile_mat, glm::vec3(tileWorldX + 24.0f, tileWorldY + 24.0f, 0.0f));
 					glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(tile_mat));
 					
 					draw(shaderProgram, VAO1, currentTileTexture); 
@@ -282,7 +304,7 @@ void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,En
 		
 		if (deltaWorld >= 1)
 		{
-			handleInput(window, Player,direction_ID,isMoving);
+			handleInput(window, Player,direction_ID,isMoving,CC,map,tile_manager);
 			
 			drawCount++;
 			deltaWorld--;
@@ -329,10 +351,13 @@ void Load_Map(const char* path,Map& map){
 }
 
 int main()
-{	
+{	CollisionChecker CC;
+
 	bool isMoving = false;
 
-	Entity* Player = new Entity(VELOCITY,VELOCITY);
+	Entity* Player = new Entity(VELOCITY,VELOCITY,"Player");
+	Player->attribx = 382;
+	Player->attriby = 202;
 	
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -384,6 +409,7 @@ int main()
 	Tile wall = Tile(1);
 	floor.texture_ID = loadTexture("../resources/sprites/floor.png","Floor");
 	wall.texture_ID = loadTexture("../resources/sprites/wall.png","Wall");
+	wall.collision=true;
 
 	Tile_Manager tile_manager;
 	tile_manager.tiles.push_back(floor);
@@ -410,7 +436,7 @@ int main()
 
 
 
-	run(window, shaderProgram, VAO1, Player_texture,Player,map,tile_manager,isMoving);
+	run(window, shaderProgram, VAO1, Player_texture,Player,map,tile_manager,isMoving,CC);
 
 	VAO1.Delete();
 	VBO1.Delete();

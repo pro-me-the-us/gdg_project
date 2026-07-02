@@ -22,6 +22,7 @@ add_executable(client
     src/VBO.cpp
     src/ShaderClass.cpp
     src/Tile_Manager.cpp
+    src/CollisionChecker.cpp
 )
 
 

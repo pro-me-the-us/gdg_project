@@ -1,11 +1,20 @@
 #include<iostream>
 #include "../include/Entity.h"
 
-Entity::Entity(float velx , float vely)
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+Entity::Entity(float velx , float vely,const char* type)
 {
+    collisionON = false;
     attribx=0;
     attriby=0;
     this->velx=velx;
     this->vely=vely;
     
+    if(type == "Player"){
+        HitBoxOffset = glm::vec2(-18.0f,-18.0f);
+        HitBoxSize = glm::vec2(36.0f,36.0f);
+    }
 }

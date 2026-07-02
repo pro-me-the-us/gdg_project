@@ -1,0 +1,12 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/shinanigan/ArenaShooter/cmake_install.cmake",
+		"/home/shinanigan/ArenaShooter/third_party/glfw/cmake_install.cmake",
+		"/home/shinanigan/ArenaShooter/third_party/glfw/src/cmake_install.cmake",
+		"/home/shinanigan/ArenaShooter/third_party/glfw/docs/cmake_install.cmake",
+		"/home/shinanigan/ArenaShooter/third_party/glm/cmake_install.cmake",
+		"/home/shinanigan/ArenaShooter/third_party/glm/glm/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
