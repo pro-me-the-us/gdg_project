@@ -388,6 +388,7 @@ int main()
 	Player->attribx = 382;
 	Player->attriby = 202;
 	Player->maxHealth=3;
+	Player->Health=3;
 	
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
