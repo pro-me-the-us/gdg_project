@@ -43,7 +43,6 @@ void handleInput(GLFWwindow* window, Entity* player,int& dirID,bool& isMoving,Co
 	isMoving = false;
 	int futDir=0;
 
-	
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){ 
 		// player->attriby += player->vely;
 		dirID = 1;
@@ -130,7 +129,7 @@ GLuint loadTexture(const char* path,const char* name)
 }
 
 
-void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,Entity* Player,Map& map,Tile_Manager& tile_manager,bool& isMoving,CollisionChecker CC)
+void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,Entity* Player,Map& map,Tile_Manager& tile_manager,bool& isMoving,CollisionChecker CC,Tile FH,Tile NH)
 {
 	double WorlddrawInterval = 1000000000 / FPS_World;
 	double PlayerdrawInterval = 1000000000 / FPS_Player;
@@ -245,6 +244,36 @@ void run(GLFWwindow* window, Shader& shaderProgram, VAO& VAO1, GLuint texture,En
 
 
 		draw(shaderProgram,VAO1,curr_tex);
+
+		offset = glm::vec2(0.0f,0.0f);
+		scale = glm::vec2(1.0f,1.0f);
+
+		glUniform2f(offset_loc,offset.x,offset.y);
+		glUniform2f(scale_loc,scale.x,scale.y);
+
+		float heartSpace = 16.0f;
+		float heightOffset = 32.0f;
+	
+
+		float totalWidth = (Player->maxHealth - 1) * heartSpace;
+		float startX = Player->attribx - (totalWidth / 2.0f);
+		float startY = Player->attriby + heightOffset;
+
+		for (int i = 0; i < Player->maxHealth; i++){
+            glm::mat4 heart_mat = glm::mat4(1.0f);
+            heart_mat = glm::translate(heart_mat, glm::vec3(startX + (i * heartSpace), startY, 0.0f));
+            heart_mat = glm::scale(heart_mat, glm::vec3(0.5f, 0.5f, 1.0f));
+            glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(heart_mat));
+			
+			if (i < Player->Health){
+                draw(shaderProgram, VAO1, FH.texture_ID);
+            } 
+            else{
+                draw(shaderProgram, VAO1, NH.texture_ID);
+            }
+            
+        }
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 
@@ -358,6 +387,7 @@ int main()
 	Entity* Player = new Entity(VELOCITY,VELOCITY,"Player");
 	Player->attribx = 382;
 	Player->attriby = 202;
+	Player->maxHealth=3;
 	
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -407,9 +437,13 @@ int main()
 
 	Tile floor = Tile(0);
 	Tile wall = Tile(1);
+	Tile fullheart = Tile(2);
+	Tile noheart = Tile(3);
 	floor.texture_ID = loadTexture("../resources/sprites/floor.png","Floor");
 	wall.texture_ID = loadTexture("../resources/sprites/wall.png","Wall");
 	wall.collision=true;
+	fullheart.texture_ID = loadTexture("../resources/heart/FullHeart.png","Full Heart");
+	noheart.texture_ID = loadTexture("../resources/heart/NoHeart.png","No Heart");
 
 	Tile_Manager tile_manager;
 	tile_manager.tiles.push_back(floor);
@@ -436,7 +470,7 @@ int main()
 
 
 
-	run(window, shaderProgram, VAO1, Player_texture,Player,map,tile_manager,isMoving,CC);
+	run(window, shaderProgram, VAO1, Player_texture,Player,map,tile_manager,isMoving,CC,fullheart,noheart);
 
 	VAO1.Delete();
 	VBO1.Delete();

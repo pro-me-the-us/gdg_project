@@ -16,6 +16,8 @@ class Entity
         float attriby;
         float velx;
         float vely;
+        int maxHealth;
+        int Health;
         glm::vec2 HitBoxOffset;
         glm::vec2 HitBoxSize;
         Entity(float velx , float vely,const char* type);

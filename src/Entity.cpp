@@ -14,6 +14,8 @@ Entity::Entity(float velx , float vely,const char* type)
     this->vely=vely;
     
     if(type == "Player"){
+        this->maxHealth=3;
+        this->Health=3;
         HitBoxOffset = glm::vec2(-18.0f,-18.0f);
         HitBoxSize = glm::vec2(36.0f,36.0f);
     }

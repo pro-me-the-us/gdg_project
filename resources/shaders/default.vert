@@ -13,6 +13,6 @@ uniform mat4 u_Model;
 
 void main()
 {
-    gl_Position = u_Projection*u_Model*u_View*vec4(aPos, 1.0);
+    gl_Position = u_Projection * u_View * u_Model * vec4(aPos, 1.0);
     TexCoord = (aTexCoord * u_UVscale) + u_UVoffset;
 }
