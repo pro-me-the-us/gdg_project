@@ -93,6 +93,28 @@ GLuint loadTexture(const char* path, const char* name)
     return texture;
 }
 
+void Load_Map(const char* path, Map& map)
+{
+    std::ifstream file(path);
+    std::string line;
+    if(!file.is_open()){ std::cout << "Failed To Open File\n"; return; }
+    int row = 0;
+    while(std::getline(file, line) && row < map.maxWorldRow)
+    {
+        std::stringstream ss(line);
+        int tile_ID;
+        int col = 0;
+        while(ss >> tile_ID && col < map.maxWorldCol)
+        {
+            map.mapTileNumber[row][col] = tile_ID;
+            col++;
+        }
+        row++;
+    }
+    file.close();
+    std::cout << "Map Loaded Successfully\n";
+}
+
 
 void run(
     GLFWwindow* window,
@@ -111,7 +133,8 @@ void run(
     bool isHost,
     int localPlayerID,
     RemotePlayer* remotePlayers,
-    int& playerCount
+    int& playerCount,
+    int mapNum          // map number so host can send it to clients
 )
 {
     double WorlddrawInterval = 1000000000 / FPS_World;
@@ -169,7 +192,6 @@ void run(
         Playertimer += elapsedTime.count();
         lastTime = currentTime;
 
-        // calculate milliseconds since last frame for interpolation
         float deltaTimeMs = std::chrono::duration<float, std::milli>(elapsedTime).count();
 
         // poll network for any incoming events this frame
@@ -182,41 +204,30 @@ void run(
                 {
                     if(isHost)
                     {
-                        // a new client connected to us
                         if(playerCount >= MAX_PLAYERS - 1)
                         {
-                            // session full, reject them
                             enet_peer_disconnect(event.peer, 0);
                             break;
                         }
-                        // assign this peer a slot in our remote players array
                         remotePlayers[playerCount].id = playerCount + 1;
                         remotePlayers[playerCount].active = true;
                         event.peer->data = &remotePlayers[playerCount];
                         playerCount++;
                         std::cout << "Player joined. Total: " << playerCount << "\n";
 
-                        // immediately tell the new client where the host is right now
-                        sendPlayerState(event.peer, localPlayerID, Player->attribx, Player->attriby);
+                        // send host position and map number to new client
+                        sendPlayerState(event.peer, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID);
+                        sendMapSync(event.peer, mapNum);
                     }
                     else
                     {
-                        // we connected to the host successfully
                         std::cout << "Connected to host\n";
-
-                        // add host as remote player so we can see them on screen
-                        remotePlayers[playerCount].id = 0;
-                        remotePlayers[playerCount].active = true;
-                        remotePlayers[playerCount].currentX = 382;
-                        remotePlayers[playerCount].currentY = 202;
-                        playerCount++;
                     }
                     break;
                 }
 
                 case ENET_EVENT_TYPE_RECEIVE:
                 {
-                    // validate packet has at least a message type header
                     if(event.packet->dataLength < sizeof(MessageType))
                     {
                         enet_packet_destroy(event.packet);
@@ -233,7 +244,6 @@ void run(
 
                             if(isHost)
                             {
-                                // host received position from a client, update their slot
                                 RemotePlayer* rp = (RemotePlayer*)event.peer->data;
                                 if(rp)
                                 {
@@ -242,13 +252,14 @@ void run(
                                     rp->currentX = state->x;
                                     rp->currentY = state->y;
                                     rp->t = 0.0f;
+                                    rp->health = state->health;
+                                    rp->maxHealth = state->maxHealth;
+                                    rp->direction = state->direction;
                                 }
-                                // broadcast this client's position to everyone else
-                                broadcastPlayerState(netHost, state->id, state->x, state->y);
+                                broadcastPlayerState(netHost, state->id, state->x, state->y, state->health, state->maxHealth, state->direction);
                             }
                             else
                             {
-                                // client received a position update, find which player it belongs to
                                 for(int i = 0; i < playerCount; i++)
                                 {
                                     if(remotePlayers[i].id == state->id)
@@ -258,14 +269,25 @@ void run(
                                         remotePlayers[i].currentX = state->x;
                                         remotePlayers[i].currentY = state->y;
                                         remotePlayers[i].t = 0.0f;
+                                        remotePlayers[i].health = state->health;
+                                        remotePlayers[i].maxHealth = state->maxHealth;
+                                        remotePlayers[i].direction = state->direction;
                                         break;
                                     }
                                 }
                             }
                             break;
                         }
-                        default:
-                            break;
+                        case MSG_MAP_SYNC:
+						{
+						    int* num = (int*)((char*)event.packet->data + sizeof(MessageType));
+						    std::string new_path = "../resources/Map/map" + std::to_string(*num) + ".txt";
+						    Load_Map(new_path.c_str(), map);
+						    std::cout << "Map reloaded: " << *num << "\n";
+						    break;
+						}
+						default:
+						    break;
                     }
 
                     enet_packet_destroy(event.packet);
@@ -276,7 +298,6 @@ void run(
                 {
                     if(isHost)
                     {
-                        // mark this player slot as empty
                         RemotePlayer* rp = (RemotePlayer*)event.peer->data;
                         if(rp) rp->active = false;
                         event.peer->data = NULL;
@@ -359,7 +380,33 @@ void run(
             glm::mat4 rp_mat = glm::mat4(1.0f);
             rp_mat = glm::translate(rp_mat, glm::vec3(renderX, renderY, 0.0f));
             glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(rp_mat));
-            draw(shaderProgram, VAO1, Up);
+
+            // pick correct texture based on remote player's direction
+            GLuint rp_tex = Up;
+            if(remotePlayers[i].direction == 2) rp_tex = Down;
+            else if(remotePlayers[i].direction == 3) rp_tex = Left;
+            else if(remotePlayers[i].direction == 4) rp_tex = Right;
+            draw(shaderProgram, VAO1, rp_tex);
+
+            // draw hearts for this remote player
+            scale = glm::vec2(1.0f, 1.0f);
+            glUniform2f(scale_loc, scale.x, scale.y);
+            glUniform2f(offset_loc, 0.0f, 0.0f);
+            float rpTotalWidth = (remotePlayers[i].maxHealth - 1) * 16.0f;
+            float rpStartX = renderX - (rpTotalWidth / 2.0f);
+            float rpStartY = renderY + 32.0f;
+            for(int h = 0; h < remotePlayers[i].maxHealth; h++)
+            {
+                glm::mat4 heart_mat = glm::mat4(1.0f);
+                heart_mat = glm::translate(heart_mat, glm::vec3(rpStartX + (h * 16.0f), rpStartY, 0.0f));
+                heart_mat = glm::scale(heart_mat, glm::vec3(0.5f, 0.5f, 1.0f));
+                glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(heart_mat));
+                if(h < remotePlayers[i].health) draw(shaderProgram, VAO1, FH.texture_ID);
+                else draw(shaderProgram, VAO1, NH.texture_ID);
+            }
+            // reset scale back for next remote player
+            scale = glm::vec2(0.5f, 0.5f);
+            glUniform2f(scale_loc, scale.x, scale.y);
         }
 
         // reset scale and offset back to default
@@ -414,15 +461,15 @@ void run(
             deltaWorld--;
         }
 
-        // send our position to the network every 50ms (20 times per second)
+        // send position, health and direction every 50ms (20 times per second)
         auto nowNet = std::chrono::steady_clock::now();
         float netElapsed = std::chrono::duration<float, std::milli>(nowNet - lastNetSend).count();
         if(netElapsed >= 50.0f)
         {
             if(isHost)
-                broadcastPlayerState(netHost, localPlayerID, Player->attribx, Player->attriby);
+                broadcastPlayerState(netHost, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID);
             else
-                sendPlayerState(serverPeer, localPlayerID, Player->attribx, Player->attriby);
+                sendPlayerState(serverPeer, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID);
             lastNetSend = nowNet;
         }
 
@@ -433,29 +480,6 @@ void run(
             Worldtimer = 0;
         }
     }
-}
-
-
-void Load_Map(const char* path, Map& map)
-{
-    std::ifstream file(path);
-    std::string line;
-    if(!file.is_open()){ std::cout << "Failed To Open File\n"; return; }
-    int row = 0;
-    while(std::getline(file, line) && row < map.maxWorldRow)
-    {
-        std::stringstream ss(line);
-        int tile_ID;
-        int col = 0;
-        while(ss >> tile_ID && col < map.maxWorldCol)
-        {
-            map.mapTileNumber[row][col] = tile_ID;
-            col++;
-        }
-        row++;
-    }
-    file.close();
-    std::cout << "Map Loaded Successfully\n";
 }
 
 
@@ -470,7 +494,6 @@ int main()
     Player->maxHealth = 3;
     Player->Health = 3;
 
-    // initialize enet before anything else
     if(enet_initialize() != 0)
     {
         std::cout << "ENet failed to initialize\n";
@@ -478,7 +501,6 @@ int main()
     }
     std::cout << "ENet initialized\n";
 
-    // ask whether this machine is hosting or joining
     int choice = 0;
     std::cout << "Press 1 to Host, Press 2 to Join: ";
     std::cin >> choice;
@@ -490,10 +512,22 @@ int main()
     int playerCount = 0;
     RemotePlayer remotePlayers[MAX_PLAYERS - 1];
     memset(remotePlayers, 0, sizeof(remotePlayers));
+    for(int i = 0; i < MAX_PLAYERS - 1; i++){
+        remotePlayers[i].active = false;
+        remotePlayers[i].health = 3;
+        remotePlayers[i].maxHealth = 3;
+        remotePlayers[i].direction = 1;
+    }
+
+    // generate map number here so both host and client end up on same map
+    srand(time(NULL));
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distr(1, 10);
+    int ran_num = distr(gen);
 
     if(choice == 1)
     {
-        // this machine is the host
         isHost = true;
         localPlayerID = 0;
 
@@ -512,7 +546,6 @@ int main()
     }
     else
     {
-        // this machine is a client
         isHost = false;
         localPlayerID = -1;
 
@@ -524,7 +557,6 @@ int main()
             return -1;
         }
 
-        // connect to host — change this IP to the host machine's local network IP
         ENetAddress serverAddress;
         serverAddress.port = 7777;
         enet_address_set_host(&serverAddress, "127.0.0.1");
@@ -539,12 +571,23 @@ int main()
         }
         std::cout << "Connecting to host...\n";
 
-        // wait up to 3 seconds for connection confirmation
         ENetEvent event;
         if(enet_host_service(netHost, &event, 3000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT)
         {
             std::cout << "Connected to host successfully\n";
             localPlayerID = 1;
+
+            // pre-add host as remote player since connect event fired before run()
+            remotePlayers[0].id = 0;
+            remotePlayers[0].active = true;
+            remotePlayers[0].currentX = 382;
+            remotePlayers[0].currentY = 202;
+            remotePlayers[0].health = 3;
+            remotePlayers[0].maxHealth = 3;
+            remotePlayers[0].direction = 1;
+            playerCount = 1;
+
+           
         }
         else
         {
@@ -613,11 +656,6 @@ int main()
     tile_manager.tiles.push_back(wall);
 
     Map map;
-    srand(time(NULL));
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    std::uniform_int_distribution<> distr(1, 10);
-    int ran_num = distr(gen);
     std::string map_path = "../resources/Map/map" + std::to_string(ran_num) + ".txt";
     Load_Map(map_path.c_str(), map);
     std::cout << "Map" << ran_num << '\n';
@@ -628,10 +666,10 @@ int main()
     run(
         window, shaderProgram, VAO1, Player_texture,
         Player, map, tile_manager, isMoving, CC, fullheart, noheart,
-        netHost, serverPeer, isHost, localPlayerID, remotePlayers, playerCount
+        netHost, serverPeer, isHost, localPlayerID, remotePlayers, playerCount,
+        ran_num
     );
 
-    // cleanup networking before exit
     if(serverPeer) enet_peer_disconnect_now(serverPeer, 0);
     enet_host_destroy(netHost);
     enet_deinitialize();
