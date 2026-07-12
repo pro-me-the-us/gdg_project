@@ -3,7 +3,9 @@ project(ArenaShooter)
 
 set(CMAKE_CXX_STANDARD 20)
 
-#add_subdirectory(third_party/enet)
+# collect enet source files from correct path
+file(GLOB ENET_SOURCES "third_party/enet/enet/*.c")
+
 add_subdirectory(third_party/glfw)
 add_subdirectory(third_party/glm)
 
@@ -23,21 +25,24 @@ add_executable(client
     src/ShaderClass.cpp
     src/Tile_Manager.cpp
     src/CollisionChecker.cpp
+    ${ENET_SOURCES}
 )
-
 
 target_include_directories(client PRIVATE
     third_party/glad/include
-    third_party/enet/include
+    third_party/enet/enet/include
     include
 )
-
 
 target_link_libraries(client PRIVATE
     glfw
     glm::glm
     OpenGL::GL
-    enet
     dl
     pthread
 )
+
+# windows needs extra socket libraries
+if(WIN32)
+    target_link_libraries(client PRIVATE ws2_32 winmm)
+endif()
