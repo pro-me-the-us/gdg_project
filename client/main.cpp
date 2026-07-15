@@ -27,7 +27,7 @@
 
 #define ORIGINAL_TILE_SIZE 16
 #define SCALE 3
-#define TILE_SIZE ORIGINAL_TILE_SIZE*SCALE
+#define TILE_SIZE ORIGINAL_TILE_SIZE *SCALE
 #define MAX_SCREEN_COL 16
 #define MAX_SCREEN_ROW 12
 #define VELOCITY 5.0f
@@ -36,33 +36,56 @@
 
 #define MAX_PLAYERS 6
 
-
-void handleInput(GLFWwindow* window, Entity* player, int& dirID, bool& isMoving, CollisionChecker CC, Map& map, Tile_Manager& tile_manager)
+void handleInput(GLFWwindow *window, Entity *player, int &dirID, bool &isMoving, CollisionChecker CC, Map &map, Tile_Manager &tile_manager)
 {
     isMoving = false;
     int futDir = 0;
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){ dirID = 1; futDir = 1; isMoving = true; }
-    else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){ dirID = 2; futDir = 2; isMoving = true; }
-    else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){ dirID = 4; futDir = 4; isMoving = true; }
-    else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){ dirID = 3; futDir = 3; isMoving = true; }
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    {
+        dirID = 1;
+        futDir = 1;
+        isMoving = true;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+        dirID = 2;
+        futDir = 2;
+        isMoving = true;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        dirID = 4;
+        futDir = 4;
+        isMoving = true;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        dirID = 3;
+        futDir = 3;
+        isMoving = true;
+    }
 
     if (isMoving)
     {
         player->collisionON = CC.CheckTile(player, futDir, map, tile_manager);
         if (!player->collisionON)
         {
-            if (futDir == 1) player->attriby += player->vely;
-            else if (futDir == 2) player->attriby -= player->vely;
-            else if (futDir == 3) player->attribx -= player->velx;
-            else if (futDir == 4) player->attribx += player->velx;
+            if (futDir == 1)
+                player->attriby += player->vely;
+            else if (futDir == 2)
+                player->attriby -= player->vely;
+            else if (futDir == 3)
+                player->attribx -= player->velx;
+            else if (futDir == 4)
+                player->attribx += player->velx;
         }
     }
-    else futDir = 0;
+    else
+        futDir = 0;
 }
 
-
-void draw(Shader& shaderProgram, VAO& VAO1, GLuint texture)
+void draw(Shader &shaderProgram, VAO &VAO1, GLuint texture)
 {
     shaderProgram.Activate();
     glActiveTexture(GL_TEXTURE0);
@@ -72,7 +95,7 @@ void draw(Shader& shaderProgram, VAO& VAO1, GLuint texture)
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
-GLuint loadTexture(const char* path, const char* name)
+GLuint loadTexture(const char *path, const char *name)
 {
     unsigned int texture;
     glGenTextures(1, &texture);
@@ -83,28 +106,36 @@ GLuint loadTexture(const char* path, const char* name)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     int w, h, ch;
     stbi_set_flip_vertically_on_load(true);
-    unsigned char* data = stbi_load(path, &w, &h, &ch, 0);
+    unsigned char *data = stbi_load(path, &w, &h, &ch, 0);
     std::cout << name << " Texture: " << (data ? "OK" : "FAILED") << std::endl;
     std::cout << "W:" << w << " H:" << h << " CH:" << ch << std::endl;
-    if (!data){ std::cout << "STB Error: " << stbi_failure_reason() << std::endl; return -1; }
+    if (!data)
+    {
+        std::cout << "STB Error: " << stbi_failure_reason() << std::endl;
+        return -1;
+    }
     GLenum format = (ch == 4) ? GL_RGBA : GL_RGB;
     glTexImage2D(GL_TEXTURE_2D, 0, format, w, h, 0, format, GL_UNSIGNED_BYTE, data);
     stbi_image_free(data);
     return texture;
 }
 
-void Load_Map(const char* path, Map& map)
+void Load_Map(const char *path, Map &map)
 {
     std::ifstream file(path);
     std::string line;
-    if(!file.is_open()){ std::cout << "Failed To Open File\n"; return; }
+    if (!file.is_open())
+    {
+        std::cout << "Failed To Open File\n";
+        return;
+    }
     int row = 0;
-    while(std::getline(file, line) && row < map.maxWorldRow)
+    while (std::getline(file, line) && row < map.maxWorldRow)
     {
         std::stringstream ss(line);
         int tile_ID;
         int col = 0;
-        while(ss >> tile_ID && col < map.maxWorldCol)
+        while (ss >> tile_ID && col < map.maxWorldCol)
         {
             map.mapTileNumber[row][col] = tile_ID;
             col++;
@@ -115,26 +146,25 @@ void Load_Map(const char* path, Map& map)
     std::cout << "Map Loaded Successfully\n";
 }
 
-
 void run(
-    GLFWwindow* window,
-    Shader& shaderProgram,
-    VAO& VAO1,
+    GLFWwindow *window,
+    Shader &shaderProgram,
+    VAO &VAO1,
     GLuint texture,
-    Entity* Player,
-    Map& map,
-    Tile_Manager& tile_manager,
-    bool& isMoving,
+    Entity *Player,
+    Map &map,
+    Tile_Manager &tile_manager,
+    bool &isMoving,
     CollisionChecker CC,
     Tile FH,
     Tile NH,
-    ENetHost* netHost,
-    ENetPeer* serverPeer,
+    ENetHost *netHost,
+    ENetPeer *serverPeer,
     bool isHost,
     int localPlayerID,
-    RemotePlayer* remotePlayers,
-    int& playerCount,
-    int mapNum          // map number so host can send it to clients
+    RemotePlayer *remotePlayers,
+    int &playerCount,
+    int mapNum // map number so host can send it to clients
 )
 {
     double WorlddrawInterval = 1000000000 / FPS_World;
@@ -169,9 +199,9 @@ void run(
     int scale_loc = glGetUniformLocation(shaderProgram.ID, "u_UVscale");
     int offset_loc = glGetUniformLocation(shaderProgram.ID, "u_UVoffset");
 
-    GLuint Up    = loadTexture("../resources/sprites/spritesheet/up.png",    "up");
-    GLuint Down  = loadTexture("../resources/sprites/spritesheet/down.png",  "down");
-    GLuint Left  = loadTexture("../resources/sprites/spritesheet/left.png",  "left");
+    GLuint Up = loadTexture("../resources/sprites/spritesheet/up.png", "up");
+    GLuint Down = loadTexture("../resources/sprites/spritesheet/down.png", "down");
+    GLuint Left = loadTexture("../resources/sprites/spritesheet/left.png", "left");
     GLuint Right = loadTexture("../resources/sprites/spritesheet/right.png", "right");
 
     GLuint curr_tex = Up;
@@ -196,131 +226,134 @@ void run(
 
         // poll network for any incoming events this frame
         ENetEvent event;
-        while(enet_host_service(netHost, &event, 0) > 0)
+        while (enet_host_service(netHost, &event, 0) > 0)
         {
-            switch(event.type)
+            switch (event.type)
             {
-                case ENET_EVENT_TYPE_CONNECT:
+            case ENET_EVENT_TYPE_CONNECT:
+            {
+                if (isHost)
                 {
-                    if(isHost)
+                    if (playerCount >= MAX_PLAYERS - 1)
                     {
-                        if(playerCount >= MAX_PLAYERS - 1)
-                        {
-                            enet_peer_disconnect(event.peer, 0);
-                            break;
-                        }
-                        remotePlayers[playerCount].id = playerCount + 1;
-                        remotePlayers[playerCount].active = true;
-                        event.peer->data = &remotePlayers[playerCount];
-                        playerCount++;
-                        std::cout << "Player joined. Total: " << playerCount << "\n";
-
-                        // send host position and map number to new client
-                        sendPlayerState(event.peer, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID);
-                        sendMapSync(event.peer, mapNum);
-                    }
-                    else
-                    {
-                        std::cout << "Connected to host\n";
-                    }
-                    break;
-                }
-
-                case ENET_EVENT_TYPE_RECEIVE:
-                {
-                    if(event.packet->dataLength < sizeof(MessageType))
-                    {
-                        enet_packet_destroy(event.packet);
+                        enet_peer_disconnect(event.peer, 0);
                         break;
                     }
+                    remotePlayers[playerCount].id = playerCount + 1;
+                    remotePlayers[playerCount].active = true;
+                    event.peer->data = &remotePlayers[playerCount];
+                    playerCount++;
+                    std::cout << "Player joined. Total: " << playerCount << "\n";
 
-                    MessageType type = *(MessageType*)event.packet->data;
+                    // send host position and map number to new client
+                    sendPlayerState(event.peer, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID);
+                    sendMapSync(event.peer, mapNum);
+                }
+                else
+                {
+                    std::cout << "Connected to host\n";
+                }
+                break;
+            }
 
-                    switch(type)
-                    {
-                        case MSG_PLAYER_STATE:
-                        {
-                            PlayerState* state = (PlayerState*)((char*)event.packet->data + sizeof(MessageType));
-
-                            if(isHost)
-                            {
-                                RemotePlayer* rp = (RemotePlayer*)event.peer->data;
-                                if(rp)
-                                {
-                                    rp->prevX = rp->currentX;
-                                    rp->prevY = rp->currentY;
-                                    rp->currentX = state->x;
-                                    rp->currentY = state->y;
-                                    rp->t = 0.0f;
-                                    rp->health = state->health;
-                                    rp->maxHealth = state->maxHealth;
-                                    rp->direction = state->direction;
-                                }
-                                broadcastPlayerState(netHost, state->id, state->x, state->y, state->health, state->maxHealth, state->direction);
-                            }
-                            else
-                            {
-                                for(int i = 0; i < playerCount; i++)
-                                {
-                                    if(remotePlayers[i].id == state->id)
-                                    {
-                                        remotePlayers[i].prevX = remotePlayers[i].currentX;
-                                        remotePlayers[i].prevY = remotePlayers[i].currentY;
-                                        remotePlayers[i].currentX = state->x;
-                                        remotePlayers[i].currentY = state->y;
-                                        remotePlayers[i].t = 0.0f;
-                                        remotePlayers[i].health = state->health;
-                                        remotePlayers[i].maxHealth = state->maxHealth;
-                                        remotePlayers[i].direction = state->direction;
-                                        break;
-                                    }
-                                }
-                            }
-                            break;
-                        }
-                        case MSG_MAP_SYNC:
-						{
-						    int* num = (int*)((char*)event.packet->data + sizeof(MessageType));
-						    std::string new_path = "../resources/Map/map" + std::to_string(*num) + ".txt";
-						    Load_Map(new_path.c_str(), map);
-						    std::cout << "Map reloaded: " << *num << "\n";
-						    break;
-						}
-						default:
-						    break;
-                    }
-
+            case ENET_EVENT_TYPE_RECEIVE:
+            {
+                if (event.packet->dataLength < sizeof(MessageType))
+                {
                     enet_packet_destroy(event.packet);
                     break;
                 }
 
-                case ENET_EVENT_TYPE_DISCONNECT:
+                MessageType type = *(MessageType *)event.packet->data;
+
+                switch (type)
                 {
-                    if(isHost)
+                case MSG_PLAYER_STATE:
+                {
+                    PlayerState *state = (PlayerState *)((char *)event.packet->data + sizeof(MessageType));
+
+                    if (isHost)
                     {
-                        RemotePlayer* rp = (RemotePlayer*)event.peer->data;
-                        if(rp) rp->active = false;
-                        event.peer->data = NULL;
-                        std::cout << "Player disconnected\n";
+                        RemotePlayer *rp = (RemotePlayer *)event.peer->data;
+                        if (rp)
+                        {
+                            rp->prevX = rp->currentX;
+                            rp->prevY = rp->currentY;
+                            rp->currentX = state->x;
+                            rp->currentY = state->y;
+                            rp->t = 0.0f;
+                            rp->health = state->health;
+                            rp->maxHealth = state->maxHealth;
+                            rp->direction = state->direction;
+                        }
+                        broadcastPlayerState(netHost, state->id, state->x, state->y, state->health, state->maxHealth, state->direction);
                     }
                     else
                     {
-                        std::cout << "Disconnected from host\n";
+                        for (int i = 0; i < playerCount; i++)
+                        {
+                            if (remotePlayers[i].id == state->id)
+                            {
+                                remotePlayers[i].prevX = remotePlayers[i].currentX;
+                                remotePlayers[i].prevY = remotePlayers[i].currentY;
+                                remotePlayers[i].currentX = state->x;
+                                remotePlayers[i].currentY = state->y;
+                                remotePlayers[i].t = 0.0f;
+                                remotePlayers[i].health = state->health;
+                                remotePlayers[i].maxHealth = state->maxHealth;
+                                remotePlayers[i].direction = state->direction;
+                                break;
+                            }
+                        }
                     }
                     break;
                 }
-
+                case MSG_MAP_SYNC:
+                {
+                    int *num = (int *)((char *)event.packet->data + sizeof(MessageType));
+                    std::string new_path = "../resources/Map/map" + std::to_string(*num) + ".txt";
+                    Load_Map(new_path.c_str(), map);
+                    std::cout << "Map reloaded: " << *num << "\n";
+                    break;
+                }
                 default:
                     break;
+                }
+
+                enet_packet_destroy(event.packet);
+                break;
+            }
+
+            case ENET_EVENT_TYPE_DISCONNECT:
+            {
+                if (isHost)
+                {
+                    RemotePlayer *rp = (RemotePlayer *)event.peer->data;
+                    if (rp)
+                        rp->active = false;
+                    event.peer->data = NULL;
+                    std::cout << "Player disconnected\n";
+                }
+                else
+                {
+                    std::cout << "Disconnected from host\n";
+                }
+                break;
+            }
+
+            default:
+                break;
             }
         }
 
         // advance interpolation for all active remote players each frame
-        for(int i = 0; i < MAX_PLAYERS - 1; i++)
+        for (int i = 0; i < MAX_PLAYERS - 1; i++)
         {
-            if(!remotePlayers[i].active) continue;
+            if (!remotePlayers[i].active)
+                continue;
             remotePlayers[i].t += deltaTimeMs / 50.0f;
-            if(remotePlayers[i].t > 1.0f) remotePlayers[i].t = 1.0f;
+            if (remotePlayers[i].t > 1.0f)
+                remotePlayers[i].t = 1.0f;
         }
 
         float Camx = (Player->attribx) - (TILE_SIZE * MAX_SCREEN_COL) / 2;
@@ -340,12 +373,12 @@ void run(
         glUniform2f(offset_loc, offset.x, offset.y);
 
         // draw all map tiles
-        for(int row = 0; row < map.maxWorldRow; row++)
+        for (int row = 0; row < map.maxWorldRow; row++)
         {
-            for(int col = 0; col < map.maxWorldCol; col++)
+            for (int col = 0; col < map.maxWorldCol; col++)
             {
                 int tileID = map.mapTileNumber[row][col];
-                if(tileID >= 0 && tileID < (int)tile_manager.tiles.size())
+                if (tileID >= 0 && tileID < (int)tile_manager.tiles.size())
                 {
                     GLuint currentTileTexture = tile_manager.tiles[tileID].texture_ID;
                     float tileWorldX = col * TILE_SIZE;
@@ -372,9 +405,10 @@ void run(
         scale = glm::vec2(0.5f, 0.5f);
         glUniform2f(scale_loc, scale.x, scale.y);
         glUniform2f(offset_loc, 0.0f, 0.0f);
-        for(int i = 0; i < MAX_PLAYERS - 1; i++)
+        for (int i = 0; i < MAX_PLAYERS - 1; i++)
         {
-            if(!remotePlayers[i].active) continue;
+            if (!remotePlayers[i].active)
+                continue;
             float renderX = netlerp(remotePlayers[i].prevX, remotePlayers[i].currentX, remotePlayers[i].t);
             float renderY = netlerp(remotePlayers[i].prevY, remotePlayers[i].currentY, remotePlayers[i].t);
             glm::mat4 rp_mat = glm::mat4(1.0f);
@@ -383,9 +417,12 @@ void run(
 
             // pick correct texture based on remote player's direction
             GLuint rp_tex = Up;
-            if(remotePlayers[i].direction == 2) rp_tex = Down;
-            else if(remotePlayers[i].direction == 3) rp_tex = Left;
-            else if(remotePlayers[i].direction == 4) rp_tex = Right;
+            if (remotePlayers[i].direction == 2)
+                rp_tex = Down;
+            else if (remotePlayers[i].direction == 3)
+                rp_tex = Left;
+            else if (remotePlayers[i].direction == 4)
+                rp_tex = Right;
             draw(shaderProgram, VAO1, rp_tex);
 
             // draw hearts for this remote player
@@ -395,14 +432,16 @@ void run(
             float rpTotalWidth = (remotePlayers[i].maxHealth - 1) * 16.0f;
             float rpStartX = renderX - (rpTotalWidth / 2.0f);
             float rpStartY = renderY + 32.0f;
-            for(int h = 0; h < remotePlayers[i].maxHealth; h++)
+            for (int h = 0; h < remotePlayers[i].maxHealth; h++)
             {
                 glm::mat4 heart_mat = glm::mat4(1.0f);
                 heart_mat = glm::translate(heart_mat, glm::vec3(rpStartX + (h * 16.0f), rpStartY, 0.0f));
                 heart_mat = glm::scale(heart_mat, glm::vec3(0.5f, 0.5f, 1.0f));
                 glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(heart_mat));
-                if(h < remotePlayers[i].health) draw(shaderProgram, VAO1, FH.texture_ID);
-                else draw(shaderProgram, VAO1, NH.texture_ID);
+                if (h < remotePlayers[i].health)
+                    draw(shaderProgram, VAO1, FH.texture_ID);
+                else
+                    draw(shaderProgram, VAO1, NH.texture_ID);
             }
             // reset scale back for next remote player
             scale = glm::vec2(0.5f, 0.5f);
@@ -421,40 +460,74 @@ void run(
         float totalWidth = (Player->maxHealth - 1) * heartSpace;
         float startX = Player->attribx - (totalWidth / 2.0f);
         float startY = Player->attriby + heightOffset;
-        for(int i = 0; i < Player->maxHealth; i++)
+        for (int i = 0; i < Player->maxHealth; i++)
         {
             glm::mat4 heart_mat = glm::mat4(1.0f);
             heart_mat = glm::translate(heart_mat, glm::vec3(startX + (i * heartSpace), startY, 0.0f));
             heart_mat = glm::scale(heart_mat, glm::vec3(0.5f, 0.5f, 1.0f));
             glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(heart_mat));
-            if(i < Player->Health) draw(shaderProgram, VAO1, FH.texture_ID);
-            else draw(shaderProgram, VAO1, NH.texture_ID);
+            if (i < Player->Health)
+                draw(shaderProgram, VAO1, FH.texture_ID);
+            else
+                draw(shaderProgram, VAO1, NH.texture_ID);
         }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
 
         // animation update
-        if(deltaPlayer >= 1)
+        if (deltaPlayer >= 1)
         {
-            if(direction_ID == 1) curr_tex = Up;
-            else if(direction_ID == 2) curr_tex = Down;
-            else if(direction_ID == 3) curr_tex = Left;
-            else if(direction_ID == 4) curr_tex = Right;
+            if (direction_ID == 1)
+                curr_tex = Up;
+            else if (direction_ID == 2)
+                curr_tex = Down;
+            else if (direction_ID == 3)
+                curr_tex = Left;
+            else if (direction_ID == 4)
+                curr_tex = Right;
 
-            if(currID == 1 && isMoving){ curr_off_x = 0.0f; curr_off_y = 0.0f; currID++; }
-            else if(currID == 2 && isMoving){ curr_off_x = 0.5f; curr_off_y = 0.0f; currID++; }
-            else if(currID == 3 && isMoving){ curr_off_x = 0.0f; curr_off_y = 0.5f; currID++; }
-            else if(currID == 4 && isMoving){ curr_off_x = 0.5f; curr_off_y = 0.5f; currID = 1; }
-            else{ curr_off_x = 0.0f; curr_off_y = 0.0f; }
+            if (currID == 1 && isMoving)
+            {
+                curr_off_x = 0.0f;
+                curr_off_y = 0.0f;
+                currID++;
+            }
+            else if (currID == 2 && isMoving)
+            {
+                curr_off_x = 0.5f;
+                curr_off_y = 0.0f;
+                currID++;
+            }
+            else if (currID == 3 && isMoving)
+            {
+                curr_off_x = 0.0f;
+                curr_off_y = 0.5f;
+                currID++;
+            }
+            else if (currID == 4 && isMoving)
+            {
+                curr_off_x = 0.5f;
+                curr_off_y = 0.5f;
+                currID = 1;
+            }
+            else
+            {
+                curr_off_x = 0.0f;
+                curr_off_y = 0.0f;
+            }
 
             animationCount++;
             deltaPlayer--;
         }
 
-        if(Playertimer >= 1000000000){ animationCount = 0; Playertimer = 0; }
+        if (Playertimer >= 1000000000)
+        {
+            animationCount = 0;
+            Playertimer = 0;
+        }
 
-        if(deltaWorld >= 1)
+        if (deltaWorld >= 1)
         {
             handleInput(window, Player, direction_ID, isMoving, CC, map, tile_manager);
             drawCount++;
@@ -464,16 +537,16 @@ void run(
         // send position, health and direction every 50ms (20 times per second)
         auto nowNet = std::chrono::steady_clock::now();
         float netElapsed = std::chrono::duration<float, std::milli>(nowNet - lastNetSend).count();
-        if(netElapsed >= 50.0f)
+        if (netElapsed >= 50.0f)
         {
-            if(isHost)
+            if (isHost)
                 broadcastPlayerState(netHost, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID);
             else
                 sendPlayerState(serverPeer, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID);
             lastNetSend = nowNet;
         }
 
-        if(Worldtimer >= 1000000000)
+        if (Worldtimer >= 1000000000)
         {
             std::cout << "FPS : " << drawCount << "\n";
             drawCount = 0;
@@ -482,19 +555,18 @@ void run(
     }
 }
 
-
 int main()
 {
     CollisionChecker CC;
     bool isMoving = false;
 
-    Entity* Player = new Entity(VELOCITY, VELOCITY, "Player");
-    Player->attribx = 382;
-    Player->attriby = 202;
+    Entity *Player = new Entity(VELOCITY, VELOCITY, "Player");
+    Player->attribx = 64;
+    Player->attriby = 64;
     Player->maxHealth = 3;
     Player->Health = 3;
 
-    if(enet_initialize() != 0)
+    if (enet_initialize() != 0)
     {
         std::cout << "ENet failed to initialize\n";
         return -1;
@@ -505,14 +577,15 @@ int main()
     std::cout << "Press 1 to Host, Press 2 to Join: ";
     std::cin >> choice;
 
-    ENetHost* netHost = nullptr;
-    ENetPeer* serverPeer = nullptr;
+    ENetHost *netHost = nullptr;
+    ENetPeer *serverPeer = nullptr;
     bool isHost = false;
     int localPlayerID = 0;
     int playerCount = 0;
     RemotePlayer remotePlayers[MAX_PLAYERS - 1];
     memset(remotePlayers, 0, sizeof(remotePlayers));
-    for(int i = 0; i < MAX_PLAYERS - 1; i++){
+    for (int i = 0; i < MAX_PLAYERS - 1; i++)
+    {
         remotePlayers[i].active = false;
         remotePlayers[i].health = 3;
         remotePlayers[i].maxHealth = 3;
@@ -523,10 +596,10 @@ int main()
     srand(time(NULL));
     static std::random_device rd;
     static std::mt19937 gen(rd());
-    std::uniform_int_distribution<> distr(1, 10);
+    std::uniform_int_distribution<> distr(1, 3);
     int ran_num = distr(gen);
 
-    if(choice == 1)
+    if (choice == 1)
     {
         isHost = true;
         localPlayerID = 0;
@@ -536,7 +609,7 @@ int main()
         address.port = 7777;
 
         netHost = enet_host_create(&address, MAX_PLAYERS, 2, 0, 0);
-        if(!netHost)
+        if (!netHost)
         {
             std::cout << "Failed to create server host\n";
             enet_deinitialize();
@@ -550,7 +623,7 @@ int main()
         localPlayerID = -1;
 
         netHost = enet_host_create(NULL, 1, 2, 0, 0);
-        if(!netHost)
+        if (!netHost)
         {
             std::cout << "Failed to create client host\n";
             enet_deinitialize();
@@ -562,7 +635,7 @@ int main()
         enet_address_set_host(&serverAddress, "127.0.0.1");
 
         serverPeer = enet_host_connect(netHost, &serverAddress, 2, 0);
-        if(!serverPeer)
+        if (!serverPeer)
         {
             std::cout << "Failed to initiate connection\n";
             enet_host_destroy(netHost);
@@ -572,7 +645,7 @@ int main()
         std::cout << "Connecting to host...\n";
 
         ENetEvent event;
-        if(enet_host_service(netHost, &event, 3000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT)
+        if (enet_host_service(netHost, &event, 3000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT)
         {
             std::cout << "Connected to host successfully\n";
             localPlayerID = 1;
@@ -586,8 +659,6 @@ int main()
             remotePlayers[0].maxHealth = 3;
             remotePlayers[0].direction = 1;
             playerCount = 1;
-
-           
         }
         else
         {
@@ -604,11 +675,15 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    float WindowWidth  = TILE_SIZE * MAX_SCREEN_COL;
+    float WindowWidth = TILE_SIZE * MAX_SCREEN_COL;
     float WindowHeight = TILE_SIZE * MAX_SCREEN_ROW;
 
-    GLFWwindow* window = glfwCreateWindow(WindowWidth, WindowHeight, "ArenaShooter", NULL, NULL);
-    if(window == NULL){ std::cout << "Window Creation Failed\n"; return -1; }
+    GLFWwindow *window = glfwCreateWindow(WindowWidth, WindowHeight, "ArenaShooter", NULL, NULL);
+    if (window == NULL)
+    {
+        std::cout << "Window Creation Failed\n";
+        return -1;
+    }
 
     glfwMakeContextCurrent(window);
     gladLoadGL();
@@ -620,14 +695,13 @@ int main()
     float spriteH = 48.0f / 2.0f;
 
     std::vector<GLfloat> vertices =
-    {
-       -spriteW,  spriteH,  0.0f,  0.0f, 1.0f,
-        spriteW,  spriteH,  0.0f,  1.0f, 1.0f,
-        spriteW, -spriteH,  0.0f,  1.0f, 0.0f,
-       -spriteW, -spriteH,  0.0f,  0.0f, 0.0f
-    };
+        {
+            -spriteW, spriteH, 0.0f, 0.0f, 1.0f,
+            spriteW, spriteH, 0.0f, 1.0f, 1.0f,
+            spriteW, -spriteH, 0.0f, 1.0f, 0.0f,
+            -spriteW, -spriteH, 0.0f, 0.0f, 0.0f};
 
-    std::vector<GLuint> indices = { 0,1,2, 2,3,0 };
+    std::vector<GLuint> indices = {0, 1, 2, 2, 3, 0};
 
     Shader shaderProgram("../resources/shaders/default.vert", "../resources/shaders/default.frag");
 
@@ -635,25 +709,32 @@ int main()
     VAO1.Bind();
     VBO VBO1(vertices, vertices.size() * sizeof(GLfloat));
     EBO EBO1(indices, indices.size() * sizeof(GLuint));
-    VAO1.LinkVBO(VBO1, 0, 3, 5 * sizeof(GLfloat), (void*)0);
-    VAO1.LinkVBO(VBO1, 1, 2, 5 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
+    VAO1.LinkVBO(VBO1, 0, 3, 5 * sizeof(GLfloat), (void *)0);
+    VAO1.LinkVBO(VBO1, 1, 2, 5 * sizeof(GLfloat), (void *)(3 * sizeof(GLfloat)));
     VAO1.Unbind();
     VBO1.Unbind();
     EBO1.Unbind();
 
     Tile floor = Tile(0);
-    Tile wall  = Tile(1);
-    Tile fullheart = Tile(2);
-    Tile noheart   = Tile(3);
-    floor.texture_ID     = loadTexture("../resources/sprites/floor.png",        "Floor");
-    wall.texture_ID      = loadTexture("../resources/sprites/wall.png",         "Wall");
-    wall.collision       = true;
-    fullheart.texture_ID = loadTexture("../resources/heart/FullHeart.png",      "Full Heart");
-    noheart.texture_ID   = loadTexture("../resources/heart/NoHeart.png",        "No Heart");
+    Tile wall = Tile(1);
+    Tile water = Tile(2);
+    Tile brick = Tile(3);
+    Tile fullheart = Tile(4);
+    Tile noheart = Tile(5);
+    floor.texture_ID = loadTexture("../resources/sprites/floor.png", "Floor");
+    wall.texture_ID = loadTexture("../resources/sprites/wall.png", "Wall");
+    water.texture_ID = loadTexture("../resources/sprites/water.png", "Water");
+    brick.texture_ID = loadTexture("../resources/sprites/brick.png", "Brick");
+    wall.collision = true;
+    water.collision = true;
+    fullheart.texture_ID = loadTexture("../resources/heart/FullHeart.png", "Full Heart");
+    noheart.texture_ID = loadTexture("../resources/heart/NoHeart.png", "No Heart");
 
     Tile_Manager tile_manager;
     tile_manager.tiles.push_back(floor);
     tile_manager.tiles.push_back(wall);
+    tile_manager.tiles.push_back(brick);
+    tile_manager.tiles.push_back(water);
 
     Map map;
     std::string map_path = "../resources/Map/map" + std::to_string(ran_num) + ".txt";
@@ -667,10 +748,10 @@ int main()
         window, shaderProgram, VAO1, Player_texture,
         Player, map, tile_manager, isMoving, CC, fullheart, noheart,
         netHost, serverPeer, isHost, localPlayerID, remotePlayers, playerCount,
-        ran_num
-    );
+        ran_num);
 
-    if(serverPeer) enet_peer_disconnect_now(serverPeer, 0);
+    if (serverPeer)
+        enet_peer_disconnect_now(serverPeer, 0);
     enet_host_destroy(netHost);
     enet_deinitialize();
 
@@ -678,6 +759,6 @@ int main()
     VBO1.Delete();
     shaderProgram.Delete();
     glfwTerminate();
-    delete(Player);
+    delete (Player);
     return 0;
 }
