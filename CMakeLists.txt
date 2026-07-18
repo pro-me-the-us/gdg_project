@@ -11,6 +11,8 @@ add_subdirectory(third_party/glm)
 
 find_package(OpenGL REQUIRED)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -g")
+
 add_executable(client
     client/main.cpp
     third_party/glad/src/glad.c
@@ -22,9 +24,11 @@ add_executable(client
     src/EBO.cpp
     src/VAO.cpp
     src/VBO.cpp
-    src/ShaderClass.cpp
+    src/ShaderClass.cpp 
     src/Tile_Manager.cpp
     src/CollisionChecker.cpp
+    src/Bullet.cpp
+    src/Bullet_Manager.cpp
     ${ENET_SOURCES}
 )
 

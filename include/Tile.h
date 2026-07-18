@@ -10,6 +10,7 @@ class Tile
         int ID;
         bool collision;
         unsigned int texture_ID;
+        bool bullet_destroy;
 
         Tile(int ID);
 };

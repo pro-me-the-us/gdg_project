@@ -21,6 +21,8 @@
 #include "Map.h"
 #include "CollisionChecker.h"
 #include "networking.h"
+#include "Bullet.h"
+#include "Bullet_Manager.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -164,7 +166,8 @@ void run(
     int localPlayerID,
     RemotePlayer *remotePlayers,
     int &playerCount,
-    int mapNum // map number so host can send it to clients
+    int mapNum, // map number so host can send it to clients
+    Bullet_Manager& bullet_manager
 )
 {
     double WorlddrawInterval = 1000000000 / FPS_World;
@@ -208,8 +211,12 @@ void run(
     glm::vec2 scale;
     glm::vec2 offset;
 
+    float Camx = 0.0f;
+    float Camy = 0.0f;
     // timer to control how often we send position over network (20 times per second)
     auto lastNetSend = std::chrono::steady_clock::now();
+
+    bool canShoot = true;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -226,6 +233,7 @@ void run(
 
         // poll network for any incoming events this frame
         ENetEvent event;
+        
         while (enet_host_service(netHost, &event, 0) > 0)
         {
             switch (event.type)
@@ -356,8 +364,8 @@ void run(
                 remotePlayers[i].t = 1.0f;
         }
 
-        float Camx = (Player->attribx) - (TILE_SIZE * MAX_SCREEN_COL) / 2;
-        float Camy = (Player->attriby) - (TILE_SIZE * MAX_SCREEN_ROW) / 2;
+        Camx = (Player->attribx) - (TILE_SIZE * MAX_SCREEN_COL) / 2;
+        Camy = (Player->attriby) - (TILE_SIZE * MAX_SCREEN_ROW) / 2;
 
         glm::mat4 view = glm::mat4(1.0f);
         view = glm::translate(view, glm::vec3(-Camx, -Camy, 0.0f));
@@ -472,6 +480,8 @@ void run(
                 draw(shaderProgram, VAO1, NH.texture_ID);
         }
 
+        bullet_manager.Draw_Bullet(shaderProgram,model_loc, VAO1, scale_loc, offset_loc);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
 
@@ -529,7 +539,26 @@ void run(
 
         if (deltaWorld >= 1)
         {
+
+            if(glfwGetMouseButton(window,GLFW_MOUSE_BUTTON_LEFT)==GLFW_PRESS && canShoot){
+                canShoot=false;
+                double mousex,mousey;
+                glfwGetCursorPos(window,&mousex,&mousey);
+
+                float targetX = (float)mousex + Camx;
+                float targetY = (576.0f - (float)mousey) + Camy;
+
+                bullet_manager.Create_Bullet(Player->attribx + 24.0f,Player->attriby + 24.0f,targetX,targetY);
+                
+            }
+            else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
+            {
+                canShoot = true;
+            }
+
             handleInput(window, Player, direction_ID, isMoving, CC, map, tile_manager);
+            
+            bullet_manager.Update_Bullet(map, tile_manager);
             drawCount++;
             deltaWorld--;
         }
@@ -560,9 +589,12 @@ int main()
     CollisionChecker CC;
     bool isMoving = false;
 
+    Bullet_Manager bullet_manager = Bullet_Manager();
+    
+
     Entity *Player = new Entity(VELOCITY, VELOCITY, "Player");
-    Player->attribx = 64;
-    Player->attriby = 64;
+    Player->attribx = 400;
+    Player->attriby = 400;
     Player->maxHealth = 3;
     Player->Health = 3;
 
@@ -583,7 +615,7 @@ int main()
     int localPlayerID = 0;
     int playerCount = 0;
     RemotePlayer remotePlayers[MAX_PLAYERS - 1];
-    memset(remotePlayers, 0, sizeof(remotePlayers));
+    // memset(remotePlayers, 0, sizeof(remotePlayers));
     for (int i = 0; i < MAX_PLAYERS - 1; i++)
     {
         remotePlayers[i].active = false;
@@ -725,8 +757,10 @@ int main()
     wall.texture_ID = loadTexture("../resources/sprites/wall.png", "Wall");
     water.texture_ID = loadTexture("../resources/sprites/water.png", "Water");
     brick.texture_ID = loadTexture("../resources/sprites/brick.png", "Brick");
+    bullet_manager.texture = loadTexture("../resources/sprites/bullet.png","Bullet");
     wall.collision = true;
     water.collision = true;
+    wall.bullet_destroy = true;
     fullheart.texture_ID = loadTexture("../resources/heart/FullHeart.png", "Full Heart");
     noheart.texture_ID = loadTexture("../resources/heart/NoHeart.png", "No Heart");
 
@@ -748,7 +782,7 @@ int main()
         window, shaderProgram, VAO1, Player_texture,
         Player, map, tile_manager, isMoving, CC, fullheart, noheart,
         netHost, serverPeer, isHost, localPlayerID, remotePlayers, playerCount,
-        ran_num);
+        ran_num,bullet_manager);
 
     if (serverPeer)
         enet_peer_disconnect_now(serverPeer, 0);

@@ -1,6 +1,6 @@
 #include<iostream>
 #include "../include/Entity.h"
-
+#include <cstring>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -13,7 +13,7 @@ Entity::Entity(float velx , float vely,const char* type)
     this->velx=velx;
     this->vely=vely;
     
-    if(type == "Player"){
+    if(strcmp(type,"Player")==0){
         this->maxHealth=3;
         this->Health=3;
         HitBoxOffset = glm::vec2(-18.0f,-18.0f);
