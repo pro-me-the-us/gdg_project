@@ -29,13 +29,12 @@
 
 #define ORIGINAL_TILE_SIZE 16
 #define SCALE 3
-#define TILE_SIZE ORIGINAL_TILE_SIZE *SCALE
+#define TILE_SIZE ORIGINAL_TILE_SIZE * SCALE
 #define MAX_SCREEN_COL 16
 #define MAX_SCREEN_ROW 12
 #define VELOCITY 5.0f
 #define FPS_World 60
 #define FPS_Player 6
-
 #define MAX_PLAYERS 6
 
 void handleInput(GLFWwindow *window, Entity *player, int &dirID, bool &isMoving, CollisionChecker CC, Map &map, Tile_Manager &tile_manager)
@@ -166,8 +165,10 @@ void run(
     int localPlayerID,
     RemotePlayer *remotePlayers,
     int &playerCount,
-    int mapNum, // map number so host can send it to clients
-    Bullet_Manager& bullet_manager
+    int mapNum,
+    Bullet_Manager &bullet_manager,
+    int *scores,   // scores[playerID] = kill count, index matches player id
+    bool *alive    // alive[playerID] = is this player still in the game
 )
 {
     double WorlddrawInterval = 1000000000 / FPS_World;
@@ -213,6 +214,7 @@ void run(
 
     float Camx = 0.0f;
     float Camy = 0.0f;
+
     // timer to control how often we send position over network (20 times per second)
     auto lastNetSend = std::chrono::steady_clock::now();
 
@@ -231,9 +233,8 @@ void run(
 
         float deltaTimeMs = std::chrono::duration<float, std::milli>(elapsedTime).count();
 
-        // poll network for any incoming events this frame
+        // poll network events every frame
         ENetEvent event;
-        
         while (enet_host_service(netHost, &event, 0) > 0)
         {
             switch (event.type)
@@ -316,6 +317,7 @@ void run(
                     }
                     break;
                 }
+
                 case MSG_MAP_SYNC:
                 {
                     int *num = (int *)((char *)event.packet->data + sizeof(MessageType));
@@ -324,6 +326,71 @@ void run(
                     std::cout << "Map reloaded: " << *num << "\n";
                     break;
                 }
+
+                // client fired a bullet, host spawns it and tells everyone
+                case MSG_BULLET_FIRE:
+                {
+                    if (isHost)
+                    {
+                        BulletFire *bf = (BulletFire *)((char *)event.packet->data + sizeof(MessageType));
+                        RemotePlayer *rp = (RemotePlayer *)event.peer->data;
+                        int shooterId = rp ? rp->id : -1;
+
+                        // spawn the bullet on host side
+                        bullet_manager.Create_Bullet(bf->startx, bf->starty, bf->targetx, bf->targety, shooterId);
+
+                        // tell all clients to also spawn this bullet so everyone sees it
+                        BulletSpawn bs;
+                        bs.shooterId = shooterId;
+                        bs.startx = bf->startx;
+                        bs.starty = bf->starty;
+                        bs.targetx = bf->targetx;
+                        bs.targety = bf->targety;
+                        broadcastMsg(netHost, MSG_BULLET_SPAWN, bs);
+                    }
+                    break;
+                }
+
+                // host told us someone fired, spawn it on our side for visuals
+                case MSG_BULLET_SPAWN:
+                {
+                    BulletSpawn *bs = (BulletSpawn *)((char *)event.packet->data + sizeof(MessageType));
+
+                    // don't spawn our own bullet again, we already did that locally
+                    if (bs->shooterId != localPlayerID)
+                        bullet_manager.Create_Bullet(bs->startx, bs->starty, bs->targetx, bs->targety, bs->shooterId);
+                    break;
+                }
+
+                // host confirmed a hit, update health on our side
+                case MSG_PLAYER_HIT:
+                {
+                    PlayerHit *ph = (PlayerHit *)((char *)event.packet->data + sizeof(MessageType));
+
+                    if (ph->victimId == localPlayerID)
+                        Player->Health = ph->heartsLeft;
+                    else
+                    {
+                        for (int i = 0; i < playerCount; i++)
+                        {
+                            if (remotePlayers[i].id == ph->victimId)
+                            {
+                                remotePlayers[i].health = ph->heartsLeft;
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                // host sent updated scores after a kill
+                case MSG_SCORE_UPDATE:
+                {
+                    ScoreUpdate *su = (ScoreUpdate *)((char *)event.packet->data + sizeof(MessageType));
+                    memcpy(scores, su->scores, sizeof(int) * MAX_PLAYERS);
+                    break;
+                }
+
                 default:
                     break;
                 }
@@ -480,7 +547,7 @@ void run(
                 draw(shaderProgram, VAO1, NH.texture_ID);
         }
 
-        bullet_manager.Draw_Bullet(shaderProgram,model_loc, VAO1, scale_loc, offset_loc);
+        bullet_manager.Draw_Bullet(shaderProgram, model_loc, VAO1, scale_loc, offset_loc);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -539,17 +606,40 @@ void run(
 
         if (deltaWorld >= 1)
         {
-
-            if(glfwGetMouseButton(window,GLFW_MOUSE_BUTTON_LEFT)==GLFW_PRESS && canShoot){
-                canShoot=false;
-                double mousex,mousey;
-                glfwGetCursorPos(window,&mousex,&mousey);
+            // player clicked to shoot
+            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && canShoot)
+            {
+                canShoot = false;
+                double mousex, mousey;
+                glfwGetCursorPos(window, &mousex, &mousey);
 
                 float targetX = (float)mousex + Camx;
                 float targetY = (576.0f - (float)mousey) + Camy;
 
-                bullet_manager.Create_Bullet(Player->attribx + 24.0f,Player->attriby + 24.0f,targetX,targetY);
-                
+                // spawn bullet locally so we see it immediately without waiting for network
+                bullet_manager.Create_Bullet(Player->attribx + 24.0f, Player->attriby + 24.0f, targetX, targetY, localPlayerID);
+
+                if (isHost)
+                {
+                    // host just tells everyone else to spawn it, no need to send to self
+                    BulletSpawn bs;
+                    bs.shooterId = localPlayerID;
+                    bs.startx = Player->attribx + 24.0f;
+                    bs.starty = Player->attriby + 24.0f;
+                    bs.targetx = targetX;
+                    bs.targety = targetY;
+                    broadcastMsg(netHost, MSG_BULLET_SPAWN, bs);
+                }
+                else
+                {
+                    // client sends shoot info to host, host will validate and broadcast
+                    BulletFire bf;
+                    bf.startx = Player->attribx + 24.0f;
+                    bf.starty = Player->attriby + 24.0f;
+                    bf.targetx = targetX;
+                    bf.targety = targetY;
+                    sendMsg(serverPeer, MSG_BULLET_FIRE, bf);
+                }
             }
             else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
             {
@@ -557,8 +647,86 @@ void run(
             }
 
             handleInput(window, Player, direction_ID, isMoving, CC, map, tile_manager);
-            
+
             bullet_manager.Update_Bullet(map, tile_manager);
+
+            // only host checks hits so there's one source of truth for damage
+            if (isHost)
+            {
+                for (auto &b : bullet_manager.Bullets)
+                {
+                    if (!b.active) continue;
+
+                    // check if this bullet hit our local player
+                    if (b.ownerId != localPlayerID && alive[localPlayerID])
+                    {
+                        float dx = b.posx - (Player->attribx + 24.0f);
+                        float dy = b.posy - (Player->attriby + 24.0f);
+
+                        if (dx * dx + dy * dy < 400.0f) // 20px hit radius
+                        {
+                            b.active = false;
+                            Player->Health--;
+
+                            // tell everyone this player got hit
+                            PlayerHit ph;
+                            ph.victimId = localPlayerID;
+                            ph.shooterId = b.ownerId;
+                            ph.heartsLeft = Player->Health;
+                            broadcastMsg(netHost, MSG_PLAYER_HIT, ph);
+
+                            // if health is 0 mark them dead and give shooter a point
+                            if (Player->Health <= 0)
+                            {
+                                alive[localPlayerID] = false;
+                                scores[b.ownerId]++;
+
+                                ScoreUpdate su;
+                                memcpy(su.scores, scores, sizeof(int) * MAX_PLAYERS);
+                                broadcastMsg(netHost, MSG_SCORE_UPDATE, su);
+                            }
+                            continue;
+                        }
+                    }
+
+                    // check if this bullet hit any remote player
+                    for (int i = 0; i < playerCount; i++)
+                    {
+                        if (!remotePlayers[i].active) continue;
+                        if (!alive[remotePlayers[i].id]) continue;
+                        if (b.ownerId == remotePlayers[i].id) continue;
+
+                        float dx = b.posx - (remotePlayers[i].currentX + 24.0f);
+                        float dy = b.posy - (remotePlayers[i].currentY + 24.0f);
+
+                        if (dx * dx + dy * dy < 400.0f) // 20pxpx hit radius
+                        {
+                            b.active = false;
+                            remotePlayers[i].health--;
+
+                            // tell everyone this remote player got hit
+                            PlayerHit ph;
+                            ph.victimId = remotePlayers[i].id;
+                            ph.shooterId = b.ownerId;
+                            ph.heartsLeft = remotePlayers[i].health;
+                            broadcastMsg(netHost, MSG_PLAYER_HIT, ph);
+
+                            // if health is 0 mark them dead and give shooter a point
+                            if (remotePlayers[i].health <= 0)
+                            {
+                                alive[remotePlayers[i].id] = false;
+                                scores[b.ownerId]++;
+
+                                ScoreUpdate su;
+                                memcpy(su.scores, scores, sizeof(int) * MAX_PLAYERS);
+                                broadcastMsg(netHost, MSG_SCORE_UPDATE, su);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
             drawCount++;
             deltaWorld--;
         }
@@ -590,7 +758,6 @@ int main()
     bool isMoving = false;
 
     Bullet_Manager bullet_manager = Bullet_Manager();
-    
 
     Entity *Player = new Entity(VELOCITY, VELOCITY, "Player");
     Player->attribx = 400;
@@ -615,7 +782,7 @@ int main()
     int localPlayerID = 0;
     int playerCount = 0;
     RemotePlayer remotePlayers[MAX_PLAYERS - 1];
-    // memset(remotePlayers, 0, sizeof(remotePlayers));
+
     for (int i = 0; i < MAX_PLAYERS - 1; i++)
     {
         remotePlayers[i].active = false;
@@ -623,6 +790,12 @@ int main()
         remotePlayers[i].maxHealth = 3;
         remotePlayers[i].direction = 1;
     }
+
+    // scores and alive arrays indexed by player id (0 = host, 1-5 = clients)
+    int scores[MAX_PLAYERS] = {0};
+    bool alive[MAX_PLAYERS];
+    for (int i = 0; i < MAX_PLAYERS; i++)
+        alive[i] = true;
 
     // generate map number here so both host and client end up on same map
     srand(time(NULL));
@@ -707,7 +880,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    float WindowWidth = TILE_SIZE * MAX_SCREEN_COL;
+    float WindowWidth  = TILE_SIZE * MAX_SCREEN_COL;
     float WindowHeight = TILE_SIZE * MAX_SCREEN_ROW;
 
     GLFWwindow *window = glfwCreateWindow(WindowWidth, WindowHeight, "ArenaShooter", NULL, NULL);
@@ -727,11 +900,12 @@ int main()
     float spriteH = 48.0f / 2.0f;
 
     std::vector<GLfloat> vertices =
-        {
-            -spriteW, spriteH, 0.0f, 0.0f, 1.0f,
-            spriteW, spriteH, 0.0f, 1.0f, 1.0f,
-            spriteW, -spriteH, 0.0f, 1.0f, 0.0f,
-            -spriteW, -spriteH, 0.0f, 0.0f, 0.0f};
+    {
+        -spriteW,  spriteH, 0.0f, 0.0f, 1.0f,
+         spriteW,  spriteH, 0.0f, 1.0f, 1.0f,
+         spriteW, -spriteH, 0.0f, 1.0f, 0.0f,
+        -spriteW, -spriteH, 0.0f, 0.0f, 0.0f
+    };
 
     std::vector<GLuint> indices = {0, 1, 2, 2, 3, 0};
 
@@ -748,21 +922,21 @@ int main()
     EBO1.Unbind();
 
     Tile floor = Tile(0);
-    Tile wall = Tile(1);
+    Tile wall  = Tile(1);
     Tile water = Tile(2);
     Tile brick = Tile(3);
     Tile fullheart = Tile(4);
-    Tile noheart = Tile(5);
-    floor.texture_ID = loadTexture("../resources/sprites/floor.png", "Floor");
-    wall.texture_ID = loadTexture("../resources/sprites/wall.png", "Wall");
-    water.texture_ID = loadTexture("../resources/sprites/water.png", "Water");
-    brick.texture_ID = loadTexture("../resources/sprites/brick.png", "Brick");
-    bullet_manager.texture = loadTexture("../resources/sprites/bullet.png","Bullet");
-    wall.collision = true;
-    water.collision = true;
-    wall.bullet_destroy = true;
+    Tile noheart   = Tile(5);
+    floor.texture_ID     = loadTexture("../resources/sprites/floor.png", "Floor");
+    wall.texture_ID      = loadTexture("../resources/sprites/wall.png", "Wall");
+    water.texture_ID     = loadTexture("../resources/sprites/water.png", "Water");
+    brick.texture_ID     = loadTexture("../resources/sprites/brick.png", "Brick");
+    bullet_manager.texture = loadTexture("../resources/sprites/bullet.png", "Bullet");
+    wall.collision       = true;
+    water.collision      = true;
+    wall.bullet_destroy  = true;
     fullheart.texture_ID = loadTexture("../resources/heart/FullHeart.png", "Full Heart");
-    noheart.texture_ID = loadTexture("../resources/heart/NoHeart.png", "No Heart");
+    noheart.texture_ID   = loadTexture("../resources/heart/NoHeart.png", "No Heart");
 
     Tile_Manager tile_manager;
     tile_manager.tiles.push_back(floor);
@@ -782,7 +956,7 @@ int main()
         window, shaderProgram, VAO1, Player_texture,
         Player, map, tile_manager, isMoving, CC, fullheart, noheart,
         netHost, serverPeer, isHost, localPlayerID, remotePlayers, playerCount,
-        ran_num,bullet_manager);
+        ran_num, bullet_manager, scores, alive);
 
     if (serverPeer)
         enet_peer_disconnect_now(serverPeer, 0);

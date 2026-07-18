@@ -9,7 +9,7 @@
 Bullet_Manager::Bullet_Manager(){
 }
 
-void Bullet_Manager::Create_Bullet(double Startx,double Starty,double targetx,double targety){
+void Bullet_Manager::Create_Bullet(double Startx,double Starty,double targetx,double targety,int ownerId){
     double bulletX = targetx - Startx;
     double bulletY = targety - Starty;
 
@@ -31,7 +31,7 @@ void Bullet_Manager::Create_Bullet(double Startx,double Starty,double targetx,do
     float bulletVelX = unitX*bullet_speed;
     float bulletVelY = unitY*bullet_speed;
 
-    Bullet new_bullet = Bullet(Startx,Starty,bulletVelX,bulletVelY,theta,maxDistance);
+    Bullet new_bullet = Bullet(Startx,Starty,bulletVelX,bulletVelY,theta,maxDistance,ownerId);
 
     this->Bullets.push_back(new_bullet);
 
@@ -83,7 +83,6 @@ void Bullet_Manager::Draw_Bullet(Shader& shaderProgram,int model_loc,VAO& VAO1,i
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
     glUniform1i(glGetUniformLocation(shaderProgram.ID, "u_Texture"), 0);
-
 
     glm::vec2 scale = glm::vec2(0.5f,0.5f);
     glUniform2f(scale_loc,scale.x,scale.y);

@@ -11,8 +11,9 @@ class Bullet{
     float maxDistance;
     float Distance_travelled;
     bool active;
+    int ownerId;
 
-    Bullet(float posx,float posy,float velx,float vely,float angle,float maxDistance);
+    Bullet(float posx,float posy,float velx,float vely,float angle,float maxDistance,int ownerId=-1);
 };
 
 #endif
