@@ -745,7 +745,7 @@ void run(
 
         if (Worldtimer >= 1000000000)
         {
-            std::cout << "FPS : " << drawCount << "\n";
+            
             drawCount = 0;
             Worldtimer = 0;
         }
