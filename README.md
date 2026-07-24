@@ -75,11 +75,12 @@ To build this project, you will need the following installed on your machine:
 
 2. **Generate build files using CMake**
    
+         bash ./setup.sh
          mkdir build
          cd build
          cmake ..
 
-3. **Compile the executables**
+4. **Compile the executables**
 
          cmake --build .
 
