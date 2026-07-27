@@ -37,30 +37,30 @@
 #define FPS_Player 6
 #define MAX_PLAYERS 6
 
-void handleInput(GLFWwindow *window, Entity *player, int &dirID, bool &isMoving, CollisionChecker CC, Map &map, Tile_Manager &tile_manager)
+void handleInput(GLFWwindow *gameWindow, Entity *player, int &dirID, bool &isMoving, CollisionChecker CC, Map &map, Tile_Manager &tile_manager)
 {
     isMoving = false;
     int futDir = 0;
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    if (glfwGetKey(gameWindow, GLFW_KEY_W) == GLFW_PRESS)
     {
         dirID = 1;
         futDir = 1;
         isMoving = true;
     }
-    else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    else if (glfwGetKey(gameWindow, GLFW_KEY_S) == GLFW_PRESS)
     {
         dirID = 2;
         futDir = 2;
         isMoving = true;
     }
-    else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    else if (glfwGetKey(gameWindow, GLFW_KEY_D) == GLFW_PRESS)
     {
         dirID = 4;
         futDir = 4;
         isMoving = true;
     }
-    else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    else if (glfwGetKey(gameWindow, GLFW_KEY_A) == GLFW_PRESS)
     {
         dirID = 3;
         futDir = 3;
@@ -148,7 +148,7 @@ void Load_Map(const char *path, Map &map)
 }
 
 void run(
-    GLFWwindow *window,
+    GLFWwindow *gameWindow,
     Shader &shaderProgram,
     VAO &VAO1,
     GLuint texture,
@@ -220,7 +220,7 @@ void run(
 
     bool canShoot = true;
 
-    while (!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(gameWindow))
     {
         glClear(GL_COLOR_BUFFER_BIT);
         auto currentTime = std::chrono::steady_clock::now();
@@ -549,7 +549,7 @@ void run(
 
         bullet_manager.Draw_Bullet(shaderProgram, model_loc, VAO1, scale_loc, offset_loc);
 
-        glfwSwapBuffers(window);
+        glfwSwapBuffers(gameWindow);
         glfwPollEvents();
 
         // animation update
@@ -607,11 +607,11 @@ void run(
         if (deltaWorld >= 1)
         {
             // player clicked to shoot
-            if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && canShoot)
+            if (glfwGetMouseButton(gameWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && canShoot)
             {
                 canShoot = false;
                 double mousex, mousey;
-                glfwGetCursorPos(window, &mousex, &mousey);
+                glfwGetCursorPos(gameWindow, &mousex, &mousey);
 
                 float targetX = (float)mousex + Camx;
                 float targetY = (576.0f - (float)mousey) + Camy;
@@ -641,12 +641,12 @@ void run(
                     sendMsg(serverPeer, MSG_BULLET_FIRE, bf);
                 }
             }
-            else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
+            else if (glfwGetMouseButton(gameWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
             {
                 canShoot = true;
             }
 
-            handleInput(window, Player, direction_ID, isMoving, CC, map, tile_manager);
+            handleInput(gameWindow, Player, direction_ID, isMoving, CC, map, tile_manager);
 
             bullet_manager.Update_Bullet(map, tile_manager);
 
@@ -760,8 +760,8 @@ int main()
     Bullet_Manager bullet_manager = Bullet_Manager();
 
     Entity *Player = new Entity(VELOCITY, VELOCITY, "Player");
-    Player->attribx = 400;
-    Player->attriby = 400;
+    Player->attribx = 10*TILE_SIZE;
+    Player->attriby = 32*TILE_SIZE;
     Player->maxHealth = 3;
     Player->Health = 3;
 
@@ -837,7 +837,7 @@ int main()
 
         ENetAddress serverAddress;
         serverAddress.port = 7777;
-        enet_address_set_host(&serverAddress, "127.0.0.1");
+        enet_address_set_host(&serverAddress, "");
 
         serverPeer = enet_host_connect(netHost, &serverAddress, 2, 0);
         if (!serverPeer)
@@ -883,14 +883,14 @@ int main()
     float WindowWidth  = TILE_SIZE * MAX_SCREEN_COL;
     float WindowHeight = TILE_SIZE * MAX_SCREEN_ROW;
 
-    GLFWwindow *window = glfwCreateWindow(WindowWidth, WindowHeight, "ArenaShooter", NULL, NULL);
-    if (window == NULL)
+    GLFWwindow *gameWindow = glfwCreateWindow(WindowWidth, WindowHeight, "ArenaShooter", NULL, NULL);
+    if (gameWindow == NULL)
     {
         std::cout << "Window Creation Failed\n";
         return -1;
     }
 
-    glfwMakeContextCurrent(window);
+    glfwMakeContextCurrent(gameWindow);
     gladLoadGL();
     glViewport(0, 0, WindowWidth, WindowHeight);
     glEnable(GL_BLEND);
@@ -953,7 +953,7 @@ int main()
     std::cout << "Player Texture ID: " << Player_texture << "\n";
 
     run(
-        window, shaderProgram, VAO1, Player_texture,
+        gameWindow, shaderProgram, VAO1, Player_texture,
         Player, map, tile_manager, isMoving, CC, fullheart, noheart,
         netHost, serverPeer, isHost, localPlayerID, remotePlayers, playerCount,
         ran_num, bullet_manager, scores, alive);
