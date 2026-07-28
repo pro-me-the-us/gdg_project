@@ -36,8 +36,10 @@ static void glfw_error_callback(int error, const char* description)
     std::cerr << "GLFW Error " << error << ": " << description << "\n";
 }
 
-int main(int, char**)
+int main()
 {
+    bool open = true;
+    static char nameBuffer[64] = "";
     // 1. Setup GLFW
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) return 1;
@@ -48,7 +50,7 @@ int main(int, char**)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // 2. Create Window
-    GLFWwindow* window = glfwCreateWindow(1280, 800, "Game Launcher", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(768, 576, "Game Launcher", nullptr, nullptr);
     if (window == nullptr)
     {
         glfwTerminate();
@@ -64,56 +66,50 @@ int main(int, char**)
         return -1;
     }
 
-    // 4. Setup Dear ImGui Context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    ImGui::StyleColorsDark();
 
-    // 5. Setup Platform/Renderer Backends
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImFont* mainfont = io.Fonts -> AddFontFromFileTTF("/mnt/c/Windows/Fonts/Forte.ttf",18.0f);
+
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window,true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
 
-    // Background color for the window (Dark Grey)
-    ImVec4 clear_color = ImVec4(0.15f, 0.15f, 0.15f, 1.00f);
+    while(!glfwWindowShouldClose(window)){
+        glClearColor(0.07f,0.13f,0.17f,1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
 
-    // 6. Main Render Loop
-    while (!glfwWindowShouldClose(window))
-    {
-        glfwPollEvents();
-
-        // Start the ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-
-        // =======================================================
-        // YOUR UI CODE GOES HERE
-        // =======================================================
+        ImGui::SetNextWindowSize(ImVec2(768,576));
+        ImGui::SetNextWindowPos(ImVec2(0,0));
+        ImGui::Begin("JoinGame Window",&open,ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::SetCursorPosX(ImGui::GetWindowSize().x/2 - ImGui::CalcTextSize("Enter Your GameTag").x/2);
         
-        ImGui::Begin("Join Game");
-        ImGui::Text("Welcome to the Arena.");
         
-        // You will add your ImGui::InputText and ImGui::Button here!
+        ImGui::PushFont(mainfont);
+        ImGui::Text("Enter Your GameTag");
         
+        
+        ImGui::InputText("GameTag",nameBuffer,sizeof(nameBuffer));
+                
+        
+        if(ImGui::Button("Join Game")){
+        //button returns true so do the whole save the username-terminate window-change concext thing
+            break;
+        }
+        ImGui::PopFont();
         ImGui::End();
 
-        // =======================================================
-
-        // 7. Rendering
         ImGui::Render();
-        int display_w, display_h;
-        glfwGetFramebufferSize(window, &display_w, &display_h);
-        glViewport(0, 0, display_w, display_h);
-        
-        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-        glClear(GL_COLOR_BUFFER_BIT);
-        
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         glfwSwapBuffers(window);
+        glfwPollEvents();
     }
 
-    // 8. Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
