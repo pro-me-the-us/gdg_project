@@ -97,7 +97,7 @@ int main()
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
 
-    ImFont* mainfont = io.Fonts -> AddFontFromFileTTF("/mnt/c/Windows/Fonts/Forte.ttf",18.0f);
+    ImFont* mainfont = io.Fonts -> AddFontFromFileTTF("../resources/Fonts/Pixel.ttf",18.0f);
 
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window,true);
