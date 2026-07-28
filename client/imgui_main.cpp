@@ -36,10 +36,37 @@ static void glfw_error_callback(int error, const char* description)
     std::cerr << "GLFW Error " << error << ": " << description << "\n";
 }
 
+
+GLuint loadTexture(const char *path, const char *name)
+{
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    int w, h, ch;
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char *data = stbi_load(path, &w, &h, &ch, 0);
+    std::cout << name << " Texture: " << (data ? "OK" : "FAILED") << std::endl;
+    std::cout << "W:" << w << " H:" << h << " CH:" << ch << std::endl;
+    if (!data)
+    {
+        std::cout << "STB Error: " << stbi_failure_reason() << std::endl;
+        return -1;
+    }
+    GLenum format = (ch == 4) ? GL_RGBA : GL_RGB;
+    glTexImage2D(GL_TEXTURE_2D, 0, format, w, h, 0, format, GL_UNSIGNED_BYTE, data);
+    stbi_image_free(data);
+    return texture;
+}
+
 int main()
 {
     bool open = true;
     static char nameBuffer[64] = "";
+    
     // 1. Setup GLFW
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) return 1;
@@ -76,6 +103,10 @@ int main()
     ImGui_ImplGlfw_InitForOpenGL(window,true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
 
+
+    
+    GLuint jsTexture = loadTexture("../resources/JoinSRC/joinSRC.png","Join Screen");
+
     while(!glfwWindowShouldClose(window)){
         glClearColor(0.07f,0.13f,0.17f,1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -85,9 +116,16 @@ int main()
         ImGui::NewFrame();
         ImGui::SetNextWindowSize(ImVec2(768,576));
         ImGui::SetNextWindowPos(ImVec2(0,0));
+        
         ImGui::Begin("JoinGame Window",&open,ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize);
+        
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        ImVec2 windowSize = ImGui::GetWindowSize();
+        ImVec2 windowBottomRight = ImVec2(windowPos.x + windowSize.x,windowPos.y+windowSize.y);
+        
         ImGui::SetCursorPosX(ImGui::GetWindowSize().x/2 - ImGui::CalcTextSize("Enter Your GameTag").x/2);
         
+        ImGui::GetWindowDrawList()->AddImage((void*)(intptr_t)jsTexture,windowPos,windowBottomRight,ImVec2(0.0f,1.0f),ImVec2(1.0f,0.0f));
         
         ImGui::PushFont(mainfont);
         ImGui::Text("Enter Your GameTag");
