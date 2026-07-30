@@ -62,10 +62,18 @@ GLuint loadTexture(const char *path, const char *name)
     return texture;
 }
 
+enum class screenStates{
+    mainRoom,
+    joinRoom,
+    createRoom,
+    gameRoom
+};
+
 int main()
 {
     bool open = true;
     static char nameBuffer[64] = "";
+    static char roomIDBuffer[64]="";
     
     // 1. Setup GLFW
     glfwSetErrorCallback(glfw_error_callback);
@@ -106,6 +114,9 @@ int main()
 
     
     GLuint jsTexture = loadTexture("../resources/JoinSRC/joinSRC.png","Join Screen");
+    
+    screenStates currentScreen = screenStates::mainRoom;
+    
 
     while(!glfwWindowShouldClose(window)){
         glClearColor(0.07f,0.13f,0.17f,1.0f);
@@ -117,27 +128,65 @@ int main()
         ImGui::SetNextWindowSize(ImVec2(768,576));
         ImGui::SetNextWindowPos(ImVec2(0,0));
         
-        ImGui::Begin("JoinGame Window",&open,ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Begin("JoinGame Window",&open,ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         
         ImVec2 windowPos = ImGui::GetWindowPos();
         ImVec2 windowSize = ImGui::GetWindowSize();
         ImVec2 windowBottomRight = ImVec2(windowPos.x + windowSize.x,windowPos.y+windowSize.y);
         
-        ImGui::SetCursorPosX(ImGui::GetWindowSize().x/2 - ImGui::CalcTextSize("Enter Your GameTag").x/2);
-        
         ImGui::GetWindowDrawList()->AddImage((void*)(intptr_t)jsTexture,windowPos,windowBottomRight,ImVec2(0.0f,1.0f),ImVec2(1.0f,0.0f));
         
         ImGui::PushFont(mainfont);
-        ImGui::Text("Enter Your GameTag");
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.0f, 0.0f, 1.0f));
+
+        switch(currentScreen){
+            case screenStates::mainRoom:{
+                ImGui::SetCursorPosX(ImGui::GetWindowSize().x/2 - ImGui::CalcTextSize("Enter Your GameTag").x/2);
+                ImGui::Text("Enter Your GameTag");
         
-        
-        ImGui::InputText("GameTag",nameBuffer,sizeof(nameBuffer));
-                
-        
-        if(ImGui::Button("Join Game")){
-        //button returns true so do the whole save the username-terminate window-change concext thing
-            break;
+                ImGui::InputText("GameTag",nameBuffer,sizeof(nameBuffer));
+                        
+                if(ImGui::Button("Join Room")){
+                //button returns true so do the whole save the username-terminate window-change concext thing
+                    currentScreen = screenStates::joinRoom;
+                }
+
+                ImGui::SameLine(0.0f,60.0f);
+
+                if(ImGui::Button("Create New Room")){
+                    currentScreen = screenStates::createRoom;
+                }
+
+                break;
+            }
+
+
+            case screenStates::joinRoom:{
+                ImGui::Text("Enter Room-ID");
+                ImGui::InputText("Room-ID",roomIDBuffer,sizeof(roomIDBuffer));
+                if(ImGui::Button("Start Game")){
+                    currentScreen = screenStates::gameRoom;
+                }                
+                break;
+            }
+
+
+            case screenStates::createRoom:{
+                //generate the roomID as per ENET requirement
+                //set the room details such as player numbers, etc
+                //launch the gameRoom
+
+                currentScreen = screenStates::gameRoom;
+                break;
+            }
+
+            case screenStates::gameRoom:{
+                //break out of this window and launch the gameroom
+                break;
+            }
         }
+
+        ImGui::PopStyleColor();
         ImGui::PopFont();
         ImGui::End();
 
@@ -147,6 +196,8 @@ int main()
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    std::cout<<nameBuffer;
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

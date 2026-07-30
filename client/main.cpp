@@ -837,7 +837,7 @@ int main()
 
         ENetAddress serverAddress;
         serverAddress.port = 7777;
-        enet_address_set_host(&serverAddress, "");
+        enet_address_set_host(&serverAddress, "127.0.0.1");
 
         serverPeer = enet_host_connect(netHost, &serverAddress, 2, 0);
         if (!serverPeer)
