@@ -14,7 +14,7 @@ find_package(OpenGL REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -g")
 
 add_executable(client
-    client/imgui_main.cpp
+    client/main.cpp
     third_party/glad/src/glad.c
     src/Entity.cpp
     src/Map.cpp

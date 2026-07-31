@@ -23,6 +23,9 @@
 #include "networking.h"
 #include "Bullet.h"
 #include "Bullet_Manager.h"
+#include "../third_party/imgui/imgui.h"
+#include "../third_party/imgui/imgui_impl_glfw.h"
+#include "../third_party/imgui/imgui_impl_opengl3.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -36,6 +39,17 @@
 #define FPS_World 60
 #define FPS_Player 6
 #define MAX_PLAYERS 6
+
+static void glfw_error_callback(int error, const char* description){
+    std::cerr << "GLFW Error " << error << ": " << description << "\n";
+}
+
+enum class screenStates{
+    mainRoom,
+    joinRoom,
+    createRoom,
+    gameRoom
+};
 
 void handleInput(GLFWwindow *gameWindow, Entity *player, int &dirID, bool &isMoving, CollisionChecker CC, Map &map, Tile_Manager &tile_manager)
 {
@@ -752,8 +766,120 @@ void run(
     }
 }
 
+void join_menu(GLFWwindow* window,char nameBuffer[],char roomIDBuffer[]){
+    
+    bool open = true;
+
+    glfwSwapInterval(1);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        std::cerr << "Failed to initialize GLAD\n";
+        return;
+    }
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    ImFont* mainfont = io.Fonts -> AddFontFromFileTTF("../resources/Fonts/Pixel.ttf",18.0f);
+
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window,true);
+    ImGui_ImplOpenGL3_Init("#version 330 core");
+
+
+    
+    GLuint jsTexture = loadTexture("../resources/JoinSRC/joinSRC.png","Join Screen");
+    
+    screenStates currentScreen = screenStates::mainRoom;
+    
+
+    while(!glfwWindowShouldClose(window) && currentScreen!=screenStates::gameRoom){
+        glClearColor(0.07f,0.13f,0.17f,1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::SetNextWindowSize(ImVec2(768,576));
+        ImGui::SetNextWindowPos(ImVec2(0,0));
+        
+        ImGui::Begin("JoinGame Window",&open,ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+        
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        ImVec2 windowSize = ImGui::GetWindowSize();
+        ImVec2 windowBottomRight = ImVec2(windowPos.x + windowSize.x,windowPos.y+windowSize.y);
+        
+        ImGui::GetWindowDrawList()->AddImage((void*)(intptr_t)jsTexture,windowPos,windowBottomRight,ImVec2(0.0f,1.0f),ImVec2(1.0f,0.0f));
+        
+        ImGui::PushFont(mainfont);
+
+        switch(currentScreen){
+            case screenStates::mainRoom:{
+                ImGui::SetCursorPosX(ImGui::GetWindowSize().x/2 - ImGui::CalcTextSize("Enter Your GameTag").x/2);
+                ImGui::Text("Enter Your GameTag");
+        
+                ImGui::InputText("GameTag",nameBuffer,sizeof(nameBuffer));
+                        
+                if(ImGui::Button("Join Room")){
+                //button returns true so do the whole save the username-terminate window-change concext thing
+                    currentScreen = screenStates::joinRoom;
+                }
+
+                ImGui::SameLine(0.0f,60.0f);
+
+                if(ImGui::Button("Create New Room")){
+                    currentScreen = screenStates::createRoom;
+                }
+
+                break;
+            }
+
+
+            case screenStates::joinRoom:{
+                ImGui::Text("Enter Room-ID");
+                ImGui::InputText("Room-ID",roomIDBuffer,sizeof(roomIDBuffer));
+                if(ImGui::Button("Start Game")){
+                    currentScreen = screenStates::gameRoom;
+                }                
+                break;
+            }
+
+
+            case screenStates::createRoom:{
+                //generate the roomID as per ENET requirement
+                //set the room details such as player numbers, etc
+                //launch the gameRoom
+
+                currentScreen = screenStates::gameRoom;
+                break;
+            }
+
+            case screenStates::gameRoom:{
+                //break out of this window and launch the gameroom
+                break;
+            }
+        }
+
+        ImGui::PopFont();
+        ImGui::End();
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    std::cout<<nameBuffer;
+    return;
+}
+
 int main()
 {
+    static char nameBuffer[64] = "";
+    static char roomIDBuffer[64]="";
     CollisionChecker CC;
     bool isMoving = false;
 
@@ -883,14 +1009,14 @@ int main()
     float WindowWidth  = TILE_SIZE * MAX_SCREEN_COL;
     float WindowHeight = TILE_SIZE * MAX_SCREEN_ROW;
 
-    GLFWwindow *gameWindow = glfwCreateWindow(WindowWidth, WindowHeight, "ArenaShooter", NULL, NULL);
-    if (gameWindow == NULL)
+    GLFWwindow *window = glfwCreateWindow(WindowWidth, WindowHeight, "ArenaShooter", NULL, NULL);
+    if (window == NULL)
     {
         std::cout << "Window Creation Failed\n";
         return -1;
     }
 
-    glfwMakeContextCurrent(gameWindow);
+    glfwMakeContextCurrent(window);
     gladLoadGL();
     glViewport(0, 0, WindowWidth, WindowHeight);
     glEnable(GL_BLEND);
@@ -952,8 +1078,10 @@ int main()
     GLuint Player_texture = loadTexture("../resources/sprites/spritesheet/up.png", "up");
     std::cout << "Player Texture ID: " << Player_texture << "\n";
 
+    join_menu(window,nameBuffer,roomIDBuffer);
+
     run(
-        gameWindow, shaderProgram, VAO1, Player_texture,
+        window, shaderProgram, VAO1, Player_texture,
         Player, map, tile_manager, isMoving, CC, fullheart, noheart,
         netHost, serverPeer, isHost, localPlayerID, remotePlayers, playerCount,
         ran_num, bullet_manager, scores, alive);
