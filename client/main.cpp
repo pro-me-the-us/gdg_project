@@ -233,10 +233,12 @@ void run(
     auto lastNetSend = std::chrono::steady_clock::now();
 
     bool canShoot = true;
-
+    bool open = true;
     while (!glfwWindowShouldClose(gameWindow))
     {
+
         glClear(GL_COLOR_BUFFER_BIT);
+        
         auto currentTime = std::chrono::steady_clock::now();
         auto elapsedTime = currentTime - lastTime;
         deltaWorld += elapsedTime.count() / WorlddrawInterval;
@@ -563,6 +565,24 @@ void run(
 
         bullet_manager.Draw_Bullet(shaderProgram, model_loc, VAO1, scale_loc, offset_loc);
 
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::SetNextWindowSize(ImVec2(220,30));
+        ImGui::SetNextWindowPos(ImVec2(0,0));
+        
+        ImGui::Begin("JoinGame Window",&open,ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground);
+        
+        ImGui::SetWindowFontScale(0.8f);
+        float textWidth = ImGui::CalcTextSize("Room ID : ABCDEF").x;
+        ImGui::SetCursorPosX(ImGui::GetWindowSize().x - textWidth - 10.0f + 1.0f); // Add 10px right padding
+        ImGui::Text("Room ID : ABCDEF");
+
+        ImGui::End();
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         glfwSwapBuffers(gameWindow);
         glfwPollEvents();
 
@@ -766,7 +786,7 @@ void run(
     }
 }
 
-void join_menu(GLFWwindow* window,char nameBuffer[],char roomIDBuffer[]){
+void join_menu(GLFWwindow* window,char nameBuffer[],size_t nameBufferSize,char roomIDBuffer[],size_t roomIDBufferSize,int* choice){
     
     bool open = true;
 
@@ -820,7 +840,7 @@ void join_menu(GLFWwindow* window,char nameBuffer[],char roomIDBuffer[]){
                 ImGui::SetCursorPosX(ImGui::GetWindowSize().x/2 - ImGui::CalcTextSize("Enter Your GameTag").x/2);
                 ImGui::Text("Enter Your GameTag");
         
-                ImGui::InputText("GameTag",nameBuffer,sizeof(nameBuffer));
+                ImGui::InputText("GameTag",nameBuffer,nameBufferSize);
                         
                 if(ImGui::Button("Join Room")){
                 //button returns true so do the whole save the username-terminate window-change concext thing
@@ -839,10 +859,11 @@ void join_menu(GLFWwindow* window,char nameBuffer[],char roomIDBuffer[]){
 
             case screenStates::joinRoom:{
                 ImGui::Text("Enter Room-ID");
-                ImGui::InputText("Room-ID",roomIDBuffer,sizeof(roomIDBuffer));
+                ImGui::InputText("Room-ID",roomIDBuffer,roomIDBufferSize);
                 if(ImGui::Button("Start Game")){
                     currentScreen = screenStates::gameRoom;
                 }                
+                *choice = 2;
                 break;
             }
 
@@ -853,6 +874,7 @@ void join_menu(GLFWwindow* window,char nameBuffer[],char roomIDBuffer[]){
                 //launch the gameRoom
 
                 currentScreen = screenStates::gameRoom;
+                *choice = 1;
                 break;
             }
 
@@ -899,8 +921,6 @@ int main()
     std::cout << "ENet initialized\n";
 
     int choice = 0;
-    std::cout << "Press 1 to Host, Press 2 to Join: ";
-    std::cin >> choice;
 
     ENetHost *netHost = nullptr;
     ENetPeer *serverPeer = nullptr;
@@ -930,76 +950,6 @@ int main()
     std::uniform_int_distribution<> distr(1, 3);
     int ran_num = distr(gen);
 
-    if (choice == 1)
-    {
-        isHost = true;
-        localPlayerID = 0;
-
-        ENetAddress address;
-        address.host = ENET_HOST_ANY;
-        address.port = 7777;
-
-        netHost = enet_host_create(&address, MAX_PLAYERS, 2, 0, 0);
-        if (!netHost)
-        {
-            std::cout << "Failed to create server host\n";
-            enet_deinitialize();
-            return -1;
-        }
-        std::cout << "Hosting on port 7777. Waiting for players...\n";
-    }
-    else
-    {
-        isHost = false;
-        localPlayerID = -1;
-
-        netHost = enet_host_create(NULL, 1, 2, 0, 0);
-        if (!netHost)
-        {
-            std::cout << "Failed to create client host\n";
-            enet_deinitialize();
-            return -1;
-        }
-
-        ENetAddress serverAddress;
-        serverAddress.port = 7777;
-        enet_address_set_host(&serverAddress, "127.0.0.1");
-
-        serverPeer = enet_host_connect(netHost, &serverAddress, 2, 0);
-        if (!serverPeer)
-        {
-            std::cout << "Failed to initiate connection\n";
-            enet_host_destroy(netHost);
-            enet_deinitialize();
-            return -1;
-        }
-        std::cout << "Connecting to host...\n";
-
-        ENetEvent event;
-        if (enet_host_service(netHost, &event, 3000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT)
-        {
-            std::cout << "Connected to host successfully\n";
-            localPlayerID = 1;
-
-            // pre-add host as remote player since connect event fired before run()
-            remotePlayers[0].id = 0;
-            remotePlayers[0].active = true;
-            remotePlayers[0].currentX = 382;
-            remotePlayers[0].currentY = 202;
-            remotePlayers[0].health = 3;
-            remotePlayers[0].maxHealth = 3;
-            remotePlayers[0].direction = 1;
-            playerCount = 1;
-        }
-        else
-        {
-            std::cout << "Connection to host failed\n";
-            enet_peer_reset(serverPeer);
-            enet_host_destroy(netHost);
-            enet_deinitialize();
-            return -1;
-        }
-    }
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -1078,7 +1028,78 @@ int main()
     GLuint Player_texture = loadTexture("../resources/sprites/spritesheet/up.png", "up");
     std::cout << "Player Texture ID: " << Player_texture << "\n";
 
-    join_menu(window,nameBuffer,roomIDBuffer);
+    join_menu(window,nameBuffer,sizeof(nameBuffer),roomIDBuffer,sizeof(roomIDBuffer),&choice);
+
+    if (choice == 1)
+    {
+        isHost = true;
+        localPlayerID = 0;
+
+        ENetAddress address;
+        address.host = ENET_HOST_ANY;
+        address.port = 7777;
+
+        netHost = enet_host_create(&address, MAX_PLAYERS, 2, 0, 0);
+        if (!netHost)
+        {
+            std::cout << "Failed to create server host\n";
+            enet_deinitialize();
+            return -1;
+        }
+        std::cout << "Hosting on port 7777. Waiting for players...\n";
+    }
+    else
+    {
+        isHost = false;
+        localPlayerID = -1;
+
+        netHost = enet_host_create(NULL, 1, 2, 0, 0);
+        if (!netHost)
+        {
+            std::cout << "Failed to create client host\n";
+            enet_deinitialize();
+            return -1;
+        }
+
+        ENetAddress serverAddress;
+        serverAddress.port = 7777;
+        enet_address_set_host(&serverAddress, "127.0.0.1");
+
+        serverPeer = enet_host_connect(netHost, &serverAddress, 2, 0);
+        if (!serverPeer)
+        {
+            std::cout << "Failed to initiate connection\n";
+            enet_host_destroy(netHost);
+            enet_deinitialize();
+            return -1;
+        }
+        std::cout << "Connecting to host...\n";
+
+        ENetEvent event;
+        if (enet_host_service(netHost, &event, 3000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT)
+        {
+            std::cout << "Connected to host successfully\n";
+            localPlayerID = 1;
+
+            // pre-add host as remote player since connect event fired before run()
+            remotePlayers[0].id = 0;
+            remotePlayers[0].active = true;
+            remotePlayers[0].currentX = 382;
+            remotePlayers[0].currentY = 202;
+            remotePlayers[0].health = 3;
+            remotePlayers[0].maxHealth = 3;
+            remotePlayers[0].direction = 1;
+            playerCount = 1;
+        }
+        else
+        {
+            std::cout << "Connection to host failed\n";
+            enet_peer_reset(serverPeer);
+            enet_host_destroy(netHost);
+            enet_deinitialize();
+            return -1;
+        }
+    }
 
     run(
         window, shaderProgram, VAO1, Player_texture,
