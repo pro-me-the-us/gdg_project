@@ -180,7 +180,7 @@ void run(
     ENetHost *netHost,
     ENetPeer *serverPeer,
     bool isHost,
-    int localPlayerID,
+    int& localPlayerID,
     RemotePlayer *remotePlayers,
     int &playerCount,
     int mapNum,
@@ -282,15 +282,28 @@ void run(
                         enet_peer_disconnect(event.peer, 0);
                         break;
                     }
-                    remotePlayers[playerCount].id = playerCount + 1;
+                    int newID = playerCount + 1;
+                    remotePlayers[playerCount].id = newID;
                     remotePlayers[playerCount].active = true;
                     event.peer->data = &remotePlayers[playerCount];
                     playerCount++;
-                    std::cout << "Player joined. Total: " << playerCount << "\n";
+                    std::cout << "Player joined. ID: " << newID << " Total: " << playerCount << "\n";
+
+                    // tell this client what their ID is
+                    AssignID aid;
+                    aid.assignedID = newID;
+                    sendMsg(event.peer, MSG_ASSIGN_ID, aid);
 
                     // send host position and map number to new client
                     sendPlayerState(event.peer, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID,curr_off_x, curr_off_y);
                     sendMapSync(event.peer, mapNum);
+                    for(int i = 0; i < playerCount - 1; i++)
+                    {
+                        if(remotePlayers[i].active)
+                        {
+                            sendPlayerState(event.peer, remotePlayers[i].id, remotePlayers[i].currentX, remotePlayers[i].currentY, remotePlayers[i].health, remotePlayers[i].maxHealth, remotePlayers[i].direction, remotePlayers[i].offX, remotePlayers[i].offY);
+                        }
+                    }
                 }
                 else
                 {
@@ -335,12 +348,18 @@ void run(
                     }
                     else
                     {
+                        // in the MSG_PLAYER_STATE handler on client side, add:
+                        std::cout << "Received state for ID: " << state->id << " at " << state->x << "," << state->y << "\n";
+                        std::cout << "My localPlayerID: " << localPlayerID << "\n";
+                        for(int i = 0; i < playerCount; i++)
+                            std::cout << "Slot " << i << " -> ID: " << remotePlayers[i].id << " active: " << remotePlayers[i].active << "\n";
+                        
+                        if (state->id == localPlayerID) break;
+                        bool found = false;
                         for (int i = 0; i < playerCount; i++)
                         {
                             if (remotePlayers[i].id == state->id)
                             {
-
-                                //updating the location and animation of each connecting player
                                 remotePlayers[i].prevX = remotePlayers[i].currentX;
                                 remotePlayers[i].prevY = remotePlayers[i].currentY;
                                 remotePlayers[i].currentX = state->x;
@@ -351,8 +370,38 @@ void run(
                                 remotePlayers[i].direction = state->direction;
                                 remotePlayers[i].offX = state->offX;
                                 remotePlayers[i].offY = state->offY;
-                                
+                                found = true;
                                 break;
+                            }
+                        }
+                        // if we don't know this player yet, add them
+                        if(!found && playerCount < MAX_PLAYERS - 1)
+                        {
+                            int idx = -1;
+                            // find an inactive slot rather than always using playerCount
+                            for(int j = 0; j < MAX_PLAYERS - 1; j++)
+                            {
+                                if(!remotePlayers[j].active)
+                                {
+                                    idx = j;
+                                    break;
+                                }
+                            }
+                            if(idx != -1)
+                            {
+                                remotePlayers[idx].id = state->id;
+                                remotePlayers[idx].active = true;
+                                remotePlayers[idx].currentX = state->x;
+                                remotePlayers[idx].currentY = state->y;
+                                remotePlayers[idx].prevX = state->x;  // same as current so no interpolation
+                                remotePlayers[idx].prevY = state->y;  // same as current so no interpolation
+                                remotePlayers[idx].t = 1.0f;          // start fully at current position
+                                remotePlayers[idx].health = state->health;
+                                remotePlayers[idx].maxHealth = state->maxHealth;
+                                remotePlayers[idx].direction = state->direction;
+                                remotePlayers[idx].offX = state->offX;
+                                remotePlayers[idx].offY = state->offY;
+                                playerCount++;
                             }
                         }
                     }
@@ -432,6 +481,14 @@ void run(
                     break;
                 }
 
+                case MSG_ASSIGN_ID:
+                {
+                    AssignID *aid = (AssignID *)((char *)event.packet->data + sizeof(MessageType));
+                    localPlayerID = aid->assignedID;
+                    std::cout << "Assigned player ID: " << localPlayerID << "\n";
+                    break;
+                }
+
                 default:
                     break;
                 }
@@ -466,6 +523,8 @@ void run(
         for (int i = 0; i < MAX_PLAYERS - 1; i++)
         {
             if (!remotePlayers[i].active)
+                continue;
+            if (remotePlayers[i].id == localPlayerID)
                 continue;
             remotePlayers[i].t += deltaTimeMs / 50.0f;
             if (remotePlayers[i].t > 1.0f)
@@ -526,6 +585,8 @@ void run(
         for (int i = 0; i < MAX_PLAYERS - 1; i++)
         {
             if (!remotePlayers[i].active)
+                continue;
+            if (remotePlayers[i].id == localPlayerID)  // ADD - skip drawing ourselves as remote
                 continue;
             float renderX = netlerp(remotePlayers[i].prevX, remotePlayers[i].currentX, remotePlayers[i].t);
             float renderY = netlerp(remotePlayers[i].prevY, remotePlayers[i].currentY, remotePlayers[i].t);
@@ -1123,7 +1184,7 @@ int main()
         if (enet_host_service(netHost, &event, 3000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT)
         {
             std::cout << "Connected to host successfully\n";
-            localPlayerID = 1;
+            localPlayerID = -1;
 
             // pre-add host as remote player since connect event fired before run()
             remotePlayers[0].id = 0;

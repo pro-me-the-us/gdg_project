@@ -12,6 +12,7 @@
 // avoid struct padding issues across different machines
 #pragma pack(push, 1)
 
+
 struct PlayerState {
     int id;
     float x;
@@ -50,6 +51,11 @@ struct ScoreUpdate {
 
 #pragma pack(pop)
 
+
+struct AssignID {
+    int assignedID;
+};
+
 // used to identify what kind of packet we received
 enum MessageType {
     MSG_PLAYER_STATE,
@@ -58,7 +64,8 @@ enum MessageType {
     MSG_BULLET_FIRE,
     MSG_BULLET_SPAWN,
     MSG_PLAYER_HIT,
-    MSG_SCORE_UPDATE
+    MSG_SCORE_UPDATE,
+    MSG_ASSIGN_ID
 };
 
 // send map number to a newly joined client so they load the same map as host
@@ -77,16 +84,16 @@ inline void sendMapSync(ENetPeer* peer, int mapNumber) {
 
 // holds everything we need to know about a player we got from network
 struct RemotePlayer {
-    int id;
+    int id = -1;
     bool active = false;
-    float prevX, prevY;        // where they were before last update
-    float currentX, currentY; // where they are now
-    float t;                   // 0 to 1, how far between prev and current we are
+    float prevX = 0.0f, prevY = 0.0f;
+    float currentX = 0.0f, currentY = 0.0f;
+    float t = 1.0f;      // start at 1 so no interpolation until first update
     int health = 3;
     int maxHealth = 3;
-    int direction = 1;         // 1=up 2=down 3=left 4=right
-    float offX = 0.0f;      //for animations of movement
-    float offY = 0.0f;      //for animations of movement
+    int direction = 1;
+    float offX = 0.0f;
+    float offY = 0.0f;
 };
 
 // simple linear interpolation for smooth movement between network updates
@@ -119,7 +126,7 @@ inline void sendPlayerState(ENetPeer* peer, int id, float x, float y, int health
 }
 
 // host uses this to tell everyone about a player's updated position
-inline void broadcastPlayerState(ENetHost* host, int id, float x, float y, int health, int maxHealth, int direction,float offX,float offY) {
+inline void broadcastPlayerState(ENetHost* host, int id, float x, float y, int health, int maxHealth, int direction, float offX, float offY, ENetPeer* exclude = nullptr) {
     size_t size = sizeof(MessageType) + sizeof(PlayerState);
     std::vector<char> buffer(size);
 
@@ -137,8 +144,14 @@ inline void broadcastPlayerState(ENetHost* host, int id, float x, float y, int h
     state.offY = offY;
     memcpy(buffer.data() + sizeof(MessageType), &state, sizeof(PlayerState));
 
-    ENetPacket* packet = enet_packet_create(buffer.data(), size, 0);
-    enet_host_broadcast(host, 0, packet);
+    // send to each peer individually so we can skip the sender
+    for (size_t i = 0; i < host->peerCount; i++)
+    {
+        if (&host->peers[i] == exclude) continue;
+        if (host->peers[i].state != ENET_PEER_STATE_CONNECTED) continue;
+        ENetPacket* packet = enet_packet_create(buffer.data(), size, 0);
+        enet_peer_send(&host->peers[i], 0, packet);
+    }
 }
 
 // send any packet type to a single peer, reliable by default for important messages
