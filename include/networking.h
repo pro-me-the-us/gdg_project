@@ -5,6 +5,9 @@
 #include <vector>
 #include <cstring>
 #include "enet/enet.h"
+#include <array>
+#include <memory>
+#include <sstream>
 
 // avoid struct padding issues across different machines
 #pragma pack(push, 1)
@@ -16,6 +19,8 @@ struct PlayerState {
     int health;
     int maxHealth;
     int direction;
+    float offX;     //for animations of movement
+    float offY;     //for animations of movement
 };
 
 // client sends this to host when they shoot
@@ -80,6 +85,8 @@ struct RemotePlayer {
     int health = 3;
     int maxHealth = 3;
     int direction = 1;         // 1=up 2=down 3=left 4=right
+    float offX = 0.0f;      //for animations of movement
+    float offY = 0.0f;      //for animations of movement
 };
 
 // simple linear interpolation for smooth movement between network updates
@@ -88,7 +95,7 @@ inline float netlerp(float a, float b, float t) {
 }
 
 // send our position, health and direction to a specific peer
-inline void sendPlayerState(ENetPeer* peer, int id, float x, float y, int health, int maxHealth, int direction) {
+inline void sendPlayerState(ENetPeer* peer, int id, float x, float y, int health, int maxHealth, int direction,float offX, float offY) {
     size_t size = sizeof(MessageType) + sizeof(PlayerState);
     std::vector<char> buffer(size);
 
@@ -102,6 +109,8 @@ inline void sendPlayerState(ENetPeer* peer, int id, float x, float y, int health
     state.health = health;
     state.maxHealth = maxHealth;
     state.direction = direction;
+    state.offX = offX;
+    state.offY = offY;
     memcpy(buffer.data() + sizeof(MessageType), &state, sizeof(PlayerState));
 
     // unreliable is fine here, we send position 20 times per second anyway
@@ -110,7 +119,7 @@ inline void sendPlayerState(ENetPeer* peer, int id, float x, float y, int health
 }
 
 // host uses this to tell everyone about a player's updated position
-inline void broadcastPlayerState(ENetHost* host, int id, float x, float y, int health, int maxHealth, int direction) {
+inline void broadcastPlayerState(ENetHost* host, int id, float x, float y, int health, int maxHealth, int direction,float offX,float offY) {
     size_t size = sizeof(MessageType) + sizeof(PlayerState);
     std::vector<char> buffer(size);
 
@@ -124,6 +133,8 @@ inline void broadcastPlayerState(ENetHost* host, int id, float x, float y, int h
     state.health = health;
     state.maxHealth = maxHealth;
     state.direction = direction;
+    state.offX = offX;
+    state.offY = offY;
     memcpy(buffer.data() + sizeof(MessageType), &state, sizeof(PlayerState));
 
     ENetPacket* packet = enet_packet_create(buffer.data(), size, 0);
@@ -154,6 +165,26 @@ inline void broadcastMsg(ENetHost* host, MessageType type, const T& payload, boo
 
     ENetPacket* p = enet_packet_create(buf.data(), size, reliable ? ENET_PACKET_FLAG_RELIABLE : 0);
     enet_host_broadcast(host, reliable ? 1 : 0, p);
+}
+
+inline std::string getLocalIP() {
+    std::array<char, 128> buffer;
+    std::string result;
+    
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(
+        popen("ip addr show eth0 | grep \"inet \" | awk '{print $2}' | cut -d'/' -f1", "r"), 
+        pclose
+    );
+    if (!pipe) return "No IP";
+    
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
+        result += buffer.data();
+    
+    // trim newline
+    if (!result.empty() && result.back() == '\n')
+        result.pop_back();
+    
+    return result;
 }
 
 #endif

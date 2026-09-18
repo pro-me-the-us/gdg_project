@@ -26,6 +26,10 @@
 #include "../third_party/imgui/imgui.h"
 #include "../third_party/imgui/imgui_impl_glfw.h"
 #include "../third_party/imgui/imgui_impl_opengl3.h"
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <ifaddrs.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -234,8 +238,17 @@ void run(
 
     bool canShoot = true;
     bool open = true;
+
+
+    //gettting the host ip so that others can connect
+    //this is the local ip that means that ohters must also be on the same wifi
+    //therefore this won't work over internet on different wifi
+    char hostIP[64] = "No IP";
+
     while (!glfwWindowShouldClose(gameWindow))
     {
+
+        
 
         glClear(GL_COLOR_BUFFER_BIT);
         
@@ -271,7 +284,7 @@ void run(
                     std::cout << "Player joined. Total: " << playerCount << "\n";
 
                     // send host position and map number to new client
-                    sendPlayerState(event.peer, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID);
+                    sendPlayerState(event.peer, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID,curr_off_x, curr_off_y);
                     sendMapSync(event.peer, mapNum);
                 }
                 else
@@ -310,8 +323,10 @@ void run(
                             rp->health = state->health;
                             rp->maxHealth = state->maxHealth;
                             rp->direction = state->direction;
+                            rp->offX = state->offX;
+                            rp->offY = state->offY;
                         }
-                        broadcastPlayerState(netHost, state->id, state->x, state->y, state->health, state->maxHealth, state->direction);
+                        broadcastPlayerState(netHost, state->id, state->x, state->y, state->health, state->maxHealth, state->direction,curr_off_x, curr_off_y);
                     }
                     else
                     {
@@ -319,6 +334,8 @@ void run(
                         {
                             if (remotePlayers[i].id == state->id)
                             {
+
+                                //updating the location and animation of each connecting player
                                 remotePlayers[i].prevX = remotePlayers[i].currentX;
                                 remotePlayers[i].prevY = remotePlayers[i].currentY;
                                 remotePlayers[i].currentX = state->x;
@@ -327,6 +344,9 @@ void run(
                                 remotePlayers[i].health = state->health;
                                 remotePlayers[i].maxHealth = state->maxHealth;
                                 remotePlayers[i].direction = state->direction;
+                                remotePlayers[i].offX = state->offX;
+                                remotePlayers[i].offY = state->offY;
+                                
                                 break;
                             }
                         }
@@ -514,6 +534,7 @@ void run(
                 rp_tex = Left;
             else if (remotePlayers[i].direction == 4)
                 rp_tex = Right;
+            glUniform2f(offset_loc, remotePlayers[i].offX, remotePlayers[i].offY);
             draw(shaderProgram, VAO1, rp_tex);
 
             // draw hearts for this remote player
@@ -574,10 +595,11 @@ void run(
         ImGui::Begin("JoinGame Window",&open,ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground);
         
         ImGui::SetWindowFontScale(0.8f);
-        float textWidth = ImGui::CalcTextSize("Room ID : ABCDEF").x;
-        ImGui::SetCursorPosX(ImGui::GetWindowSize().x - textWidth - 10.0f + 1.0f); // Add 10px right padding
-        ImGui::Text("Room ID : ABCDEF");
 
+        //printing the host's local ip
+        float textWidth = ImGui::CalcTextSize("Room ID : ABCDEF").x;
+        ImGui::SetCursorPosX(ImGui::GetWindowSize().x - textWidth - 10.0f + 1.0f);
+        ImGui::Text("Room ID : ABCDEF");
         ImGui::End();
 
         ImGui::Render();
@@ -771,9 +793,9 @@ void run(
         if (netElapsed >= 50.0f)
         {
             if (isHost)
-                broadcastPlayerState(netHost, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID);
+                broadcastPlayerState(netHost, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID,curr_off_x, curr_off_y);
             else
-                sendPlayerState(serverPeer, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID);
+                sendPlayerState(serverPeer, localPlayerID, Player->attribx, Player->attriby, Player->Health, Player->maxHealth, direction_ID,curr_off_x, curr_off_y);
             lastNetSend = nowNet;
         }
 
@@ -783,10 +805,15 @@ void run(
             drawCount = 0;
             Worldtimer = 0;
         }
+
+        if(Player->Health==0){
+            playerCount--;
+            break;
+        };
     }
 }
 
-void join_menu(GLFWwindow* window,char nameBuffer[],size_t nameBufferSize,char roomIDBuffer[],size_t roomIDBufferSize,int* choice){
+void join_menu(GLFWwindow* window,char nameBuffer[],size_t nameBufferSize,char roomIDBuffer[],size_t roomIDBufferSize,char hostIPBuffer[], size_t hostIPBufferSize,int* choice){
     
     bool open = true;
 
@@ -1063,7 +1090,7 @@ int main()
 
         ENetAddress serverAddress;
         serverAddress.port = 7777;
-        enet_address_set_host(&serverAddress, "127.0.0.1");
+        enet_address_set_host(&serverAddress, roomIDBuffer);
 
         serverPeer = enet_host_connect(netHost, &serverAddress, 2, 0);
         if (!serverPeer)
