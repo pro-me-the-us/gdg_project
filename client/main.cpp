@@ -186,7 +186,8 @@ void run(
     int mapNum,
     Bullet_Manager &bullet_manager,
     int *scores,   // scores[playerID] = kill count, index matches player id
-    bool *alive    // alive[playerID] = is this player still in the game
+    bool *alive,    // alive[playerID] = is this player still in the game
+    char* roomIDBuffer
 )
 {
     double WorlddrawInterval = 1000000000 / FPS_World;
@@ -244,6 +245,10 @@ void run(
     //this is the local ip that means that ohters must also be on the same wifi
     //therefore this won't work over internet on different wifi
     char hostIP[64] = "No IP";
+    if (isHost) {
+        std::string ip = getLocalIP();
+        strncpy(hostIP, ip.c_str(), sizeof(hostIP));
+    }
 
     while (!glfwWindowShouldClose(gameWindow))
     {
@@ -597,9 +602,11 @@ void run(
         ImGui::SetWindowFontScale(0.8f);
 
         //printing the host's local ip
-        float textWidth = ImGui::CalcTextSize("Room ID : ABCDEF").x;
+        char roomLabel[128];
+        snprintf(roomLabel, sizeof(roomLabel), "Room ID : %s", isHost ? hostIP : roomIDBuffer);
+        float textWidth = ImGui::CalcTextSize(roomLabel).x;
         ImGui::SetCursorPosX(ImGui::GetWindowSize().x - textWidth - 10.0f + 1.0f);
-        ImGui::Text("Room ID : ABCDEF");
+        ImGui::Text("%s", roomLabel);
         ImGui::End();
 
         ImGui::Render();
@@ -813,7 +820,7 @@ void run(
     }
 }
 
-void join_menu(GLFWwindow* window,char nameBuffer[],size_t nameBufferSize,char roomIDBuffer[],size_t roomIDBufferSize,char hostIPBuffer[], size_t hostIPBufferSize,int* choice){
+void join_menu(GLFWwindow* window,char nameBuffer[],size_t nameBufferSize,char roomIDBuffer[],size_t roomIDBufferSize,int* choice){
     
     bool open = true;
 
@@ -1132,7 +1139,7 @@ int main()
         window, shaderProgram, VAO1, Player_texture,
         Player, map, tile_manager, isMoving, CC, fullheart, noheart,
         netHost, serverPeer, isHost, localPlayerID, remotePlayers, playerCount,
-        ran_num, bullet_manager, scores, alive);
+        ran_num, bullet_manager, scores, alive,roomIDBuffer);
 
     if (serverPeer)
         enet_peer_disconnect_now(serverPeer, 0);
