@@ -508,15 +508,17 @@ void run(
         }
 
         // draw local player
-        glm::mat4 player_mat = glm::mat4(1.0f);
-        player_mat = glm::translate(player_mat, glm::vec3(Player->attribx, Player->attriby, 0.0f));
-        glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(player_mat));
-        scale = glm::vec2(0.5f, 0.5f);
-        offset = glm::vec2(0.0f, 0.0f);
-        glUniform2f(scale_loc, scale.x, scale.y);
-        glUniform2f(offset_loc, curr_off_x, curr_off_y);
-        draw(shaderProgram, VAO1, curr_tex);
-
+        if(alive[localPlayerID])
+        {
+            glm::mat4 player_mat = glm::mat4(1.0f);
+            player_mat = glm::translate(player_mat, glm::vec3(Player->attribx, Player->attriby, 0.0f));
+            glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(player_mat));
+            scale = glm::vec2(0.5f, 0.5f);
+            offset = glm::vec2(0.0f, 0.0f);
+            glUniform2f(scale_loc, scale.x, scale.y);
+            glUniform2f(offset_loc, curr_off_x, curr_off_y);
+            draw(shaderProgram, VAO1, curr_tex);
+        }
         // draw all active remote players using interpolated positions
         scale = glm::vec2(0.5f, 0.5f);
         glUniform2f(scale_loc, scale.x, scale.y);
@@ -571,22 +573,25 @@ void run(
         glUniform2f(offset_loc, offset.x, offset.y);
         glUniform2f(scale_loc, scale.x, scale.y);
 
-        // draw hearts for local player
-        float heartSpace = 16.0f;
-        float heightOffset = 32.0f;
-        float totalWidth = (Player->maxHealth - 1) * heartSpace;
-        float startX = Player->attribx - (totalWidth / 2.0f);
-        float startY = Player->attriby + heightOffset;
-        for (int i = 0; i < Player->maxHealth; i++)
+        // draw hearts for local player only if alive
+        if(alive[localPlayerID])
         {
-            glm::mat4 heart_mat = glm::mat4(1.0f);
-            heart_mat = glm::translate(heart_mat, glm::vec3(startX + (i * heartSpace), startY, 0.0f));
-            heart_mat = glm::scale(heart_mat, glm::vec3(0.5f, 0.5f, 1.0f));
-            glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(heart_mat));
-            if (i < Player->Health)
-                draw(shaderProgram, VAO1, FH.texture_ID);
-            else
-                draw(shaderProgram, VAO1, NH.texture_ID);
+            float heartSpace = 16.0f;
+            float heightOffset = 32.0f;
+            float totalWidth = (Player->maxHealth - 1) * heartSpace;
+            float startX = Player->attribx - (totalWidth / 2.0f);
+            float startY = Player->attriby + heightOffset;
+            for (int i = 0; i < Player->maxHealth; i++)
+            {
+                glm::mat4 heart_mat = glm::mat4(1.0f);
+                heart_mat = glm::translate(heart_mat, glm::vec3(startX + (i * heartSpace), startY, 0.0f));
+                heart_mat = glm::scale(heart_mat, glm::vec3(0.5f, 0.5f, 1.0f));
+                glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(heart_mat));
+                if (i < Player->Health)
+                    draw(shaderProgram, VAO1, FH.texture_ID);
+                else
+                    draw(shaderProgram, VAO1, NH.texture_ID);
+            }
         }
 
         bullet_manager.Draw_Bullet(shaderProgram, model_loc, VAO1, scale_loc, offset_loc);
@@ -670,7 +675,7 @@ void run(
         if (deltaWorld >= 1)
         {
             // player clicked to shoot
-            if (glfwGetMouseButton(gameWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && canShoot)
+            if (glfwGetMouseButton(gameWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && canShoot && alive[localPlayerID])
             {
                 canShoot = false;
                 double mousex, mousey;
@@ -709,7 +714,10 @@ void run(
                 canShoot = true;
             }
 
-            handleInput(gameWindow, Player, direction_ID, isMoving, CC, map, tile_manager);
+            if(alive[localPlayerID])
+                handleInput(gameWindow, Player, direction_ID, isMoving, CC, map, tile_manager);
+            else
+                isMoving = false;
 
             bullet_manager.Update_Bullet(map, tile_manager);
 
@@ -813,10 +821,12 @@ void run(
             Worldtimer = 0;
         }
 
-        if(Player->Health==0){
+        if(Player->Health <= 0 && alive[localPlayerID]){
+            alive[localPlayerID] = false;
             playerCount--;
-            break;
-        };
+            // don't break, keep the loop running so server stays alive
+            // just stop rendering/moving the local player
+        }
     }
 }
 
